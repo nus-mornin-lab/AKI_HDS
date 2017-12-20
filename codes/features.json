@@ -106,12 +106,12 @@
   },
   {
     "itemid": [770, 220587],
-    "label": "ALT",
+    "label": "AST",
     "table": "chartevents"
   },
   {
     "itemid": [50878],
-    "label": "ALT",
+    "label": "AST",
     "table": "labevents"
   },
   {
