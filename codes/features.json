@@ -1,0 +1,137 @@
+[
+  {
+    "itemid": [113],
+    "label": "CVP",
+    "table": "chartevents"
+  },
+  {
+    "itemid": [211, 220045],
+    "label": "Heart Rate",
+    "table": "chartevents"
+  },
+  {
+    "itemid": [618, 220210],
+    "label": "Respiratory Rate",
+    "table": "chartevents"
+  },
+  {
+    "itemid": [646],
+    "label": "SpO2",
+    "table": "chartevents"
+  },
+  {
+    "itemid": [834],
+    "label": "SaO2",
+    "table": "chartevents"
+  },
+  {
+    "itemid": [779],
+    "label": "PaO2",
+    "table": "chartevents"
+  },
+  {
+    "itemid": [50818],
+    "label": "pCO2",
+    "table": "labevents"
+  },
+  {
+    "itemid": [50820],
+    "label": "pH",
+    "table": "labevents"
+  },
+  {
+    "itemid": [50822],
+    "label": "Potassium",
+    "table": "labevents"
+  },
+  {
+    "itemid": [50808],
+    "label": "Calcium",
+    "table": "labevents"
+  },
+  {
+    "itemid": [50809],
+    "label": "Glucose",
+    "table": "labevents"
+  },
+  {
+    "itemid": [50983],
+    "label": "Sodium",
+    "table": "labevents"
+  },
+  {
+    "itemid": [50902],
+    "label": "Chloride",
+    "table": "labevents"
+  },
+  {
+    "itemid": [227443],
+    "label": "HCO3",
+    "table": "chartevents"
+  },
+  {
+    "itemid": [51301],
+    "label": "White Blood Cells",
+    "table": "labevents"
+  },
+  {
+    "itemid": [50811, 51222],
+    "label": "Hemoglobin",
+    "table": "labevents"
+  },
+  {
+    "itemid": [51279],
+    "label": "Red Blood Cells",
+    "table": "labevents"
+  },
+  {
+    "itemid": [51265],
+    "label": "Platelet Count",
+    "table": "labevents"
+  },
+  {
+    "itemid": [818, 1531, 225668],
+    "label": "Lactic Acid",
+    "table": "chartevents"
+  },
+  {
+    "itemid": [769, 220644],
+    "label": "ALT",
+    "table": "chartevents"
+  },
+  {
+    "itemid": [50861],
+    "label": "ALT",
+    "table": "labevents"
+  },
+  {
+    "itemid": [770, 220587],
+    "label": "AST",
+    "table": "chartevents"
+  },
+  {
+    "itemid": [50878],
+    "label": "AST",
+    "table": "labevents"
+  },
+  {
+    "itemid": [51006],
+    "label": "Urea Nitrogen",
+    "table": "labevents"
+  },
+  {
+    "itemid": [50912],
+    "label": "Creatinine",
+    "table": "labevents"
+  },
+  {
+    "itemid": [50867],
+    "label": "Amylase",
+    "table": "labevents"
+  },
+  {
+    "itemid": [50956],
+    "label": "Lipase",
+    "table": "labevents"
+  }
+]
