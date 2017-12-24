@@ -1,10 +1,18 @@
 from sqlalchemy import create_engine
 import pandas as pd
 
+user = input("DB user name: ")
+address = input("DB address: ")
+port = input("DB port number: ")
+
 
 def getEngine():
 	try:
-		engine = create_engine('postgresql://maxpoon:@localhost:5432/mimic')
+		engine = create_engine('postgresql://{user}:@{address}:{port}/mimic'.format(
+			user=user,
+			address=address,
+			port=port
+		))
 		connection = engine.connect()
 		# sorry for this, we need to set schema this way
 		pd.read_sql_query("""
