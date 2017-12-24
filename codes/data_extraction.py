@@ -109,6 +109,152 @@ def addFeature(feature, hadmID, timeSeries, con):
     timeSeries[feature['label']] = featureColumn
 
 
+def addUrineOutput(hadmID, timeSeries, con):
+    startTime = timeSeries['Time'][0]
+    endTime = timeSeries['Time'][len(timeSeries) - 1]
+    urineOutputs = pd.read_sql("""
+    SELECT charttime,
+    case when itemid = 227488 then -1*value else value end AS value
+    FROM outputevents
+    WHERE hadm_id={hadmID} AND 
+    value IS NOT NULL AND
+    itemid IN (
+    -- these are the most frequently occurring urine output observations in CareVue
+    40055, -- "Urine Out Foley"
+    43175, -- "Urine ."
+    40069, -- "Urine Out Void"
+    40094, -- "Urine Out Condom Cath"
+    40715, -- "Urine Out Suprapubic"
+    40473, -- "Urine Out IleoConduit"
+    40085, -- "Urine Out Incontinent"
+    40057, -- "Urine Out Rt Nephrostomy"
+    40056, -- "Urine Out Lt Nephrostomy"
+    40405, -- "Urine Out Other"
+    40428, -- "Urine Out Straight Cath"
+    40086,--	Urine Out Incontinent
+    40096, -- "Urine Out Ureteral Stent #1"
+    40651, -- "Urine Out Ureteral Stent #2"
+    
+    -- these are the most frequently occurring urine output observations in MetaVision
+    226559, -- "Foley"
+    226560, -- "Void"
+    226561, -- "Condom Cath"
+    226584, -- "Ileoconduit"
+    226563, -- "Suprapubic"
+    226564, -- "R Nephrostomy"
+    226565, -- "L Nephrostomy"
+    226567, --	Straight Cath
+    226557, -- R Ureteral Stent
+    226558, -- L Ureteral Stent
+    227488, -- GU Irrigant Volume In
+    227489  -- GU Irrigant/Urine Volume Out
+    );
+    """.format(hadmID=hadmID), con)
+    urineOutputs['charttime'] = urineOutputs['charttime'].apply(roundTimeToNearestHour)
+    windowSize = 6
+    validTimes = set(list(map(str, timeSeries['Time'].tolist()))[windowSize:])
+    timedeltas = [timedelta(hours=i) for i in range(windowSize)]
+    urineOutputsSum = {time: 0 for time in validTimes}
+    for _, row in urineOutputs.iterrows():
+        value = row['value']
+        for delta in timedeltas:
+            time = row['charttime'] + delta
+            if str(time) in validTimes:
+                urineOutputsSum[str(time)] += value
+    urineOutputColumn = pd.Series([urineOutputsSum[str(time)] if str(time) in urineOutputsSum else np.nan for time in timeSeries['Time']])
+    timeSeries['{n} hours urine output'.format(n=windowSize)] = urineOutputColumn
+
+
+def addDrug(drug, hadmID, timeSeries, con):
+    query = """
+    SELECT charttime, amount FROM {table}
+    WHERE hadm_id={hadmID} AND itemid IN {itemIDs}
+    """
+    cvQuery = mvQuery = None
+    if 'cv' in drug:
+        cvQuery = query.format(table='cv', hadmID=hadmID, itemIDs=drug['cv'])
+    if 'mv' in drug:
+        mvQuery = query.format(table='mv', hadmID=hadmID, itemIDs=drug['mv'])
+    if cvQuery and mvQuery:
+        query = cvQuery + " UNION " + mvQuery
+    else:
+        query = cvQuery if cvQuery else mvQuery
+    query += ";"
+    inputEvents = pd.read_sql(query, con)
+    inputEvents['charttime']
+
+
+def addGCS(hadmID, timeSeries, con):
+    query = """
+    SELECT c1.charttime AS currenttime,
+    case
+        -- endotrach/vent is assigned a value of 0, later parsed specially
+        when c1.itemid = 723 and c1.value = '1.0 ET/Trach' then 0 -- carevue
+        when c1.itemid = 223900 and c1.value = 'No Response-ETT' then 0 -- metavision
+        else c1.valuenum
+    end AS value{label},
+    c2.charttime AS prevtime,
+    case
+        -- endotrach/vent is assigned a value of 0, later parsed specially
+        when c2.itemid = 723 and c2.value = '1.0 ET/Trach' then 0 -- carevue
+        when c2.itemid = 223900 and c2.value = 'No Response-ETT' then 0 -- metavision
+        else c2.valuenum
+    end AS prevvalue{label} FROM chartevents AS c1 
+    LEFT JOIN (
+      SELECT c3.itemid, c3.value, c3.charttime, c3.valuenum
+      FROM chartevents AS c3
+      WHERE c3.itemid IN {itemIDs} AND c3.hadm_id={hadmID}
+    ) AS c2
+    ON c2.charttime<c1.charttime AND c2.charttime>c1.charttime-interval '6' hour
+    WHERE c1.itemid IN {itemIDs} AND hadm_id={hadmID}
+    ORDER BY currenttime DESC, prevtime DESC;
+    """
+    motor = pd.read_sql(query.format(hadmID=hadmID, itemIDs='(454,223901)', label='motor'), con)
+    verbal = pd.read_sql(query.format(hadmID=hadmID, itemIDs='(723,223900)', label='verbal'), con)
+    eyes = pd.read_sql(query.format(hadmID=hadmID, itemIDs='(184,220739)', label='eyes'), con)
+    for df in (motor, verbal, eyes):
+        existingTimes = set()
+        indexToDrop = []
+        for i, row in df.iterrows():
+            if str(row['currenttime']) in existingTimes:
+                indexToDrop.append(i)
+            else:
+                existingTimes.add(str(row['currenttime']))
+        df.drop(df.index[indexToDrop], inplace=True)
+        df.drop('prevtime', axis=1,inplace=True)
+    df = pd.merge(motor, pd.merge(verbal, eyes, how='outer', on=['currenttime']), how='outer', on=['currenttime'])
+    def coalesce(l):
+        return next(item for item in l if item is not None)
+
+    def calculateGCS(row):
+        if row['valueverbal'] == 0:
+            return 15
+        if row['valueverbal'] is None and row['prevvalueverbal'] == 0:
+            return 15
+        if row['prevvalueverbal'] == 0:
+            return coalesce([row['valuemotor'], 6]) +\
+                   coalesce([row['valueverbal'], 5]) +\
+                   coalesce([row['valueeyes'], 4])
+
+        return coalesce([row['valuemotor'], row['prevvaluemotor'], 6]) + \
+               coalesce([row['valueverbal'], row['prevvalueverbal'], 5]) + \
+               coalesce([row['valueeyes'], row['prevvalueeyes'], 4])
+
+    df['gcs'] = df.apply(calculateGCS, axis=1)
+    df['currenttime'] = df['currenttime'].apply(roundTimeToNearestHour)
+    timeToGCS = {str(row['currenttime']): row['gcs'] for _, row in df.iterrows()}
+    timeSeries['gcs'] = pd.Series([timeToGCS[str(time)] if str(time) in timeToGCS else np.nan for time in timeSeries['Time']])
+
+
+def addProcedure(procedure, icustayID, timeSeries, con):
+    procedures = pd.read_sql("""
+    SELECT starttime, endtime FROM {view} WHERE icustay_id={icustayID};
+    """.format(view=procedure['view'], icustayID=icustayID), con)
+    timeSeries[procedure['label']] = pd.Series([1 if any((row['starttime'] <= time <= row['endtime']
+                         for _, row in procedures.iterrows()))
+               else 0 for time in timeSeries['Time']])
+
+
 def getTimeStamps(patientStay):
     startTime = roundTimeToNearestHour(patientStay['intime'])
     if patientStay['dod']:
@@ -132,6 +278,10 @@ def getPatientTimeSeries(patientStay):
     con = getEngine()
     for feature in features:
         addFeature(feature, hadmID, timeSeries, con)
+    addUrineOutput(hadmID, timeSeries, con)
+    addGCS(hadmID, timeSeries, con)
+    addProcedure({'view': 'ventdurations', 'label': 'ventilation'}, icustayID, timeSeries, con)
+    addProcedure({'view': 'vasopressordurations', 'label': 'vasoactive medications'}, icustayID, timeSeries, con)
     return timeSeries
 
 
