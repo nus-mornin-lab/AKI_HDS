@@ -1,137 +1,123 @@
 [
   {
-    "itemid": [113],
     "label": "CVP",
-    "table": "chartevents"
+    "chartevents": [220074, 113]
   },
   {
-    "itemid": [211, 220045],
     "label": "Heart Rate",
-    "table": "chartevents"
+    "chartevents": [211, 220045]
   },
   {
-    "itemid": [618, 220210],
     "label": "Respiratory Rate",
-    "table": "chartevents"
+    "chartevents": [618, 220210]
   },
   {
-    "itemid": [646],
-    "label": "SpO2",
-    "table": "chartevents"
+    "label": "SpO2/SaO2",
+    "chartevents": [646, 834, 220277]
   },
   {
-    "itemid": [834],
-    "label": "SaO2",
-    "table": "chartevents"
-  },
-  {
-    "itemid": [779],
     "label": "PaO2",
-    "table": "chartevents"
+    "chartevents": [779, 490, 3785, 3838, 3837],
+    "labevents": [50821]
   },
   {
-    "itemid": [50818],
-    "label": "pCO2",
-    "table": "labevents"
+    "label": "paCO2",
+    "chartevents": [778, 3784, 3836, 3835],
+    "labevents": [50818]
   },
   {
-    "itemid": [50820],
     "label": "pH",
-    "table": "labevents"
+    "chartevents": [780, 1126, 3839, 4753],
+    "labevents": [50820]
   },
   {
-    "itemid": [50822],
     "label": "Potassium",
-    "table": "labevents"
+    "chartevents": [829, 1535, 3792, 227442, 227464, 4194, 3725],
+    "labevents": [50971, 50822]
   },
   {
-    "itemid": [50808],
     "label": "Calcium",
-    "table": "labevents"
+    "chartevents": [786, 225625, 1522, 3746],
+    "labevents": [50893]
   },
   {
-    "itemid": [50809],
     "label": "Glucose",
-    "table": "labevents"
+    "chartevents": [225664, 807, 811, 1529, 220621, 226537, 3744],
+    "labevents": [50809, 50931]
   },
   {
-    "itemid": [50983],
     "label": "Sodium",
-    "table": "labevents"
+    "chartevents": [837, 220645, 3803, 226534, 1536, 4195, 3726],
+    "labevents": [50983, 50824]
   },
   {
-    "itemid": [50902],
     "label": "Chloride",
-    "table": "labevents"
+    "chartevents": [788, 220602, 1523, 4193, 3724, 226536, 3747],
+    "labevents": [50902, 50806]
   },
   {
-    "itemid": [227443],
     "label": "HCO3",
-    "table": "chartevents"
+    "chartevents": [227443],
+    "labevents": [50882, 50803]
   },
   {
-    "itemid": [51301],
     "label": "White Blood Cells",
-    "table": "labevents"
+    "chartevents": [1127, 1542, 220546, 4200, 3834],
+    "labevents": [51300, 51301]
   },
   {
-    "itemid": [50811, 51222],
     "label": "Hemoglobin",
-    "table": "labevents"
+    "labevents": [50811, 51222]
   },
   {
-    "itemid": [51279],
     "label": "Red Blood Cells",
-    "table": "labevents"
+    "chartevents": [4197, 3799],
+    "labevents": [51279]
   },
   {
-    "itemid": [51265],
     "label": "Platelet Count",
-    "table": "labevents"
+    "chartevents": [828, 227457, 3789],
+    "lavevents": [51265]
   },
   {
-    "itemid": [818, 1531, 225668],
+    "label": "CRP",
+    "chartevents": [227444],
+    "labevents": [50889]
+  },
+  {
     "label": "Lactic Acid",
-    "table": "chartevents"
+    "chartevents": [818, 1531, 225668]
   },
   {
-    "itemid": [769, 220644],
     "label": "ALT",
-    "table": "chartevents"
+    "chartevents": [769, 220644],
+    "labevents": [50861]
   },
   {
-    "itemid": [50861],
-    "label": "ALT",
-    "table": "labevents"
-  },
-  {
-    "itemid": [770, 220587],
     "label": "AST",
-    "table": "chartevents"
+    "chartevents": [770, 220587],
+    "labevents": [50878]
   },
   {
-    "itemid": [50878],
-    "label": "AST",
-    "table": "labevents"
-  },
-  {
-    "itemid": [51006],
     "label": "Urea Nitrogen",
-    "table": "labevents"
+    "labevents": [51006]
   },
   {
-    "itemid": [50912],
     "label": "Creatinine",
-    "table": "labevents"
+    "chartevents": [791, 1525, 220615, 3750],
+    "labevents": [50912, 51081]
   },
   {
-    "itemid": [50867],
     "label": "Amylase",
-    "table": "labevents"
+    "chartevents": [775, 220581],
+    "labevents": [50867]
   },
   {
-    "itemid": [50956],
     "label": "Lipase",
-    "table": "labevents"
+    "labevents": [50956]
+  },
+  {
+    "label": "Weight",
+    "chartevents": [581, 580, 224639, 226512]
   }
 ]
