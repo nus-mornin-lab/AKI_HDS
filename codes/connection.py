@@ -1,15 +1,16 @@
 from sqlalchemy import create_engine
 import pandas as pd
 
-engine = None
 
 def getEngine():
-	global engine
-	if engine:
-		return engine
 	try:
 		engine = create_engine('postgresql://maxpoon:@localhost:5432/mimic')
 		connection = engine.connect()
+		# sorry for this, we need to set schema this way
+		pd.read_sql_query("""
+		    set search_path to mimiciii;
+		    SELECT COUNT(*) FROM patients;
+		    """, con=connection)
 		return connection
 	except:
 		print("Unable to connect to the database")
