@@ -110,8 +110,6 @@ def addFeature(feature, hadmID, timeSeries, con):
 
 
 def addUrineOutput(hadmID, timeSeries, con):
-    startTime = timeSeries['Time'][0]
-    endTime = timeSeries['Time'][len(timeSeries) - 1]
     urineOutputs = pd.read_sql("""
     SELECT charttime,
     case when itemid = 227488 then -1*value else value end AS value
