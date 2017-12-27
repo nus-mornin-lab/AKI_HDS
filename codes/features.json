@@ -80,11 +80,6 @@
     "lavevents": [51265]
   },
   {
-    "label": "CRP",
-    "chartevents": [227444],
-    "labevents": [50889]
-  },
-  {
     "label": "Lactic Acid",
     "chartevents": [818, 1531, 225668]
   },
