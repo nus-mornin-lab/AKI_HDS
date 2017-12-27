@@ -12,8 +12,8 @@ import time
 features_json_data = open('./features.json').read()
 features = json.loads(features_json_data)
 mustHaveFeatures = set(['Heart Rate', 'Red Blood Cells', 'Urea Nitrogen', 'Hemoglobin', 'Platelet Count',
-                        'Respiratory Rate', 'PaO2', 'paCO2', 'Creatinine', 'HCO3', 'Chloride', 'Calcium',
-                        'White Blood Cells', 'pH', 'Potassium', 'Sodium', 'SpO2/SaO2', 'Glucose'])
+                        'Respiratory Rate', 'Creatinine', 'HCO3', 'Chloride', 'Calcium',
+                        'White Blood Cells', 'Potassium', 'Sodium', 'SpO2/SaO2', 'Glucose'])
 engine = getEngine()
 
 
@@ -29,6 +29,7 @@ def getPatientsHavingFeature(feature):
                     itemids='(' + ','.join(list(map(str, feature[table]))) + ')'
                 ),
                 con=engine)['hadm_id'].tolist())
+    print("Number of patients having feature ", feature['label'], " ", len(hadmIDs))
     return hadmIDs
 
 
@@ -54,7 +55,7 @@ def getICUStayPatients(engine=engine, force_reload=False):
             WHERE first_wardid=last_wardid
             AND first_careunit=last_careunit
             AND los>=0.5 AND los<=30
-            AND i.intime<i.outtime AND i.intime<p.dod;
+            AND i.outtime-i.intime>=interval '12' hour AND p.dod-i.intime>=interval '12' hour;
             """, con=engine)
         # get patients having all the features we need
         hadmIDs = getPatientsHavingAllMustHaveFeatures()
