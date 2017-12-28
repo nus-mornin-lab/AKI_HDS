@@ -5,7 +5,7 @@ from data_iterator import DataIterator
 
 numFeatures = 29
 batchSize = 64
-stateSize=64
+stateSize = 64
 
 def buildGraph():
 	x = tf.placeholder(tf.float64, [batchSize, None, numFeatures])  # [batchSize, num_steps, numFeatures]
