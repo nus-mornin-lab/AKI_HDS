@@ -2,9 +2,11 @@ import numpy as np
 
 
 class DataIterator:
-	def __init__(self, timeSeriesList):
-		self.cursor = 0
+	def __init__(self, timeSeriesList, numBuckets=5):
 		self.size = len(timeSeriesList)
+		self.numBuckets = numBuckets
+		self.epochs = 0
+		self.cursor = np.array([0] * numBuckets)
 		timeSeriesList.sort(key=lambda x: len(x))
 		self.sequenceLengths = [len(timeSeries) for timeSeries in timeSeriesList]
 		# add padding
@@ -14,12 +16,14 @@ class DataIterator:
 			data_i[:self.sequenceLengths[i]] = timeSeriesList[i].values
 
 	def next_batch(self, n):
-		index = min(self.cursor+n, self.size)
+		if np.any(self.cursor + n + 1 > self.size):
+			self.epochs += 1
+			self.cursor -= self.cursor
+		i = np.random.randint(0, self.numBuckets)
+		index = min(self.cursor[i]+n, self.size)
 		maxLength = max(self.sequenceLengths[self.cursor:index])
-		x = self.data[self.cursor:index, :maxLength, :-1]
-		y = self.data[self.cursor:index, :maxLength, -1]
-		sequenceLengths = self.sequenceLengths[self.cursor:index]
-		self.cursor += n
-		if self.cursor >= self.size:
-			self.cursor = 0
+		x = self.data[self.cursor[i]:index, :maxLength, :-1]
+		y = self.data[self.cursor[i]:index, :maxLength, -1]
+		sequenceLengths = self.sequenceLengths[self.cursor[i]:index]
+		self.cursor[i] += n
 		return x, y, sequenceLengths
