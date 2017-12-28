@@ -29,7 +29,6 @@ def getPatientsHavingFeature(feature):
                     itemids='(' + ','.join(list(map(str, feature[table]))) + ')'
                 ),
                 con=engine)['hadm_id'].tolist())
-    print("Number of patients having feature ", feature['label'], " ", len(hadmIDs))
     return hadmIDs
 
 
