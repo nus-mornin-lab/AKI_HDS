@@ -38,7 +38,7 @@ def buildGraph():
 	}
 
 
-def trainGraph(g, train, test, epochs = 10):
+def trainGraph(g, train, test, epochs=10):
 	with tf.Session() as sess:
 		sess.run(tf.initialize_all_variables())
 		tr = DataIterator(train)
