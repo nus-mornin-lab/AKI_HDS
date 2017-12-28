@@ -8,8 +8,8 @@ class DataIterator:
 		timeSeriesList.sort(key=lambda x: len(x))
 		self.sequenceLengths = [len(timeSeries) for timeSeries in timeSeriesList]
 		# add padding
-		maxLength = max(timeSeriesList, key=lambda x: len(x))
-		self.data = np.zeros([len(timeSeriesList), maxLength, len(timeSeriesList[0].columns)], dtype=np.int32)
+		maxLength = len(max(timeSeriesList, key=lambda x: len(x)))
+		self.data = np.zeros([len(timeSeriesList), maxLength, len(timeSeriesList[0].columns)], dtype=np.float64)
 		for i, data_i in enumerate(self.data):
 			data_i[:self.sequenceLengths[i]] = timeSeriesList[i].values
 
@@ -18,7 +18,8 @@ class DataIterator:
 		maxLength = max(self.sequenceLengths[self.cursor:index])
 		x = self.data[self.cursor:index, :maxLength, :-1]
 		y = self.data[self.cursor:index, :maxLength, -1]
+		sequenceLengths = self.sequenceLengths[self.cursor:index]
 		self.cursor += n
 		if self.cursor >= self.size:
 			self.cursor = 0
-		return x, y
+		return x, y, sequenceLengths
