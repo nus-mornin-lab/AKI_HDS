@@ -224,7 +224,6 @@ def addGCS(hadmID, timeSeries, con):
     df = pd.merge(motor, pd.merge(verbal, eyes, how='outer', on=['currenttime']), how='outer', on=['currenttime'])
     def coalesce(l):
         return next(item for item in l if item is not None)
-
     def calculateGCS(row):
         if row['valueverbal'] == 0:
             return 15
@@ -238,7 +237,9 @@ def addGCS(hadmID, timeSeries, con):
         return coalesce([row['valuemotor'], row['prevvaluemotor'], 6]) + \
                coalesce([row['valueverbal'], row['prevvalueverbal'], 5]) + \
                coalesce([row['valueeyes'], row['prevvalueeyes'], 4])
-
+    if len(df) == 0:
+        timeSeries['gcs'] = pd.Series([np.nan for _ in range(len(timeSeries))])
+        return
     df['gcs'] = df.apply(calculateGCS, axis=1)
     df['currenttime'] = df['currenttime'].apply(roundTimeToNearestHour)
     timeToGCS = {str(row['currenttime']): row['gcs'] for _, row in df.iterrows()}
