@@ -11,6 +11,12 @@ import time
 
 features_json_data = open('./features.json').read()
 features = json.loads(features_json_data)
+allFeatures = ['age', 'gender', 'CVP', 'Heart Rate',
+                   'Respiratory Rate', 'SpO2/SaO2', 'PaO2', 'paCO2', 'pH', 'Potassium',
+                   'Calcium', 'Glucose', 'Sodium', 'Chloride', 'HCO3', 'White Blood Cells',
+                   'Hemoglobin', 'Red Blood Cells', 'Platelet Count', 'Lactic Acid', 'ALT',
+                   'AST', 'Urea Nitrogen', 'Creatinine', 'Amylase', 'Lipase', 'Weight', 'gcs', 'ventilation',
+                   'vasoactive medications']
 mustHaveFeatures = set(['Heart Rate', 'Red Blood Cells', 'Urea Nitrogen', 'Hemoglobin', 'Platelet Count',
                         'Respiratory Rate', 'Creatinine', 'HCO3', 'Chloride', 'Calcium',
                         'White Blood Cells', 'Potassium', 'Sodium', 'SpO2/SaO2', 'Glucose'])
@@ -306,8 +312,107 @@ def getAllPatientsTimeSeries(stays, forceReload=False):
     return allTimeSeries
 
 
+def addNotNullColumns(timeSeries):
+    for feature in allFeatures:
+        timeSeries[feature + ' not null'] = pd.notnull(timeSeries[feature]).astype(np.int32)
+    return timeSeries
+
+
+def addNotNullColumnsForAllPatients(allTimeSeries, forceReload=False):
+    fileName = './time_series_with_not_null.csv'
+    file = Path(fileName)
+    if not forceReload and file.is_file():
+        allTimeSeriesConcat = pd.read_csv(file)
+        allTimeSeries = [timeSeries.sort_values('Time') for icustayID, timeSeries in
+                         allTimeSeriesConcat.groupby('icustay_id')]
+        return allTimeSeries
+    allTimeSeriesWithNotNullColumns = []
+    for i in range(0, len(allTimeSeries), 100):
+        pool = ProcessPoolExecutor()
+        batchTimeSeries = [pool.submit(addNotNullColumns, allTimeSeries[j]) for j in range(i, min(i+100, len(stays)))]
+        wait(batchTimeSeries)
+        batchTimeSeries = [timeSeries.result() for timeSeries in batchTimeSeries]
+        allTimeSeriesWithNotNullColumns += batchTimeSeries
+        if (i+100) % 1000 == 0:
+            print("Added not null columns for {n} patients.".format(n=min(i+100, len(stays))))
+    allTimeSeriesConcat = pd.concat(allTimeSeriesWithNotNullColumns)
+    allTimeSeriesConcat.to_csv(fileName, index=False)
+    return allTimeSeriesWithNotNullColumns
+
+
+def fillNa(timeSeries):
+    for feature in allFeatures:
+        timeSeries[feature].interpolate(method='ffill', inplace=True)
+        timeSeries[feature].fillna(method='ffill', inplace=True)
+        timeSeries[feature].fillna(method='backfill', inplace=True)
+    timeSeries.fillna(0, inplace=True)
+    return timeSeries
+
+
+def fillNaForAllPatients(allTimeSeries, forceReload=False):
+    fileName = './time_series_fillna.csv'
+    file = Path(fileName)
+    if not forceReload and file.is_file():
+        allTimeSeriesConcat = pd.read_csv(file)
+        allTimeSeries = [timeSeries.sort_values('Time') for icustayID, timeSeries in
+                         allTimeSeriesConcat.groupby('icustay_id')]
+        return allTimeSeries
+    allTimeSeriesFillNa = []
+    for i in range(0, len(allTimeSeries), 100):
+        pool = ProcessPoolExecutor()
+        batchTimeSeries = [pool.submit(fillNa, allTimeSeries[j]) for j in range(i, min(i + 100, len(stays)))]
+        wait(batchTimeSeries)
+        batchTimeSeries = [timeSeries.result() for timeSeries in batchTimeSeries]
+        allTimeSeriesFillNa += batchTimeSeries
+        if (i + 100) % 1000 == 0:
+            print("Fill na for {n} patients.".format(n=min(i + 100, len(stays))))
+    allTimeSeriesConcat = pd.concat(allTimeSeriesFillNa)
+    allTimeSeriesConcat.to_csv(fileName, index=False)
+    return allTimeSeriesFillNa
+
+
+def normalizeFeatures(allTimeSeries, forceReload=False):
+    fileName = './time_series_normalized.csv'
+    file = Path(fileName)
+    if not forceReload and file.is_file():
+        allTimeSeriesConcat = pd.read_csv(file)
+        allTimeSeries = [timeSeries.sort_values('Time') for icustayID, timeSeries in
+                         allTimeSeriesConcat.groupby('icustay_id')]
+        return allTimeSeries
+    allTimeSeriesConcat = pd.concat(allTimeSeries)
+    for feature in allFeatures:
+        minValue = allTimeSeriesConcat[feature].min()
+        maxValue = allTimeSeriesConcat[feature].max()
+        diff = maxValue - minValue
+        allTimeSeriesConcat[feature] = (allTimeSeriesConcat[feature]-minValue)/diff
+    allTimeSeriesConcat.to_csv(fileName, index=False)
+    allTimeSeries = [timeSeries.sort_values('Time') for icustayID, timeSeries in
+                     allTimeSeriesConcat.groupby('icustay_id')]
+    return allTimeSeries
+
+
+def addNextNHoursUrineOutput(allTimeSeries, n=6):
+    for timeSeries in allTimeSeries:
+        timeSeries['Next {n} hours urine output'.format(n=n)] = \
+            list(timeSeries['{n} hours urine output'.format(n=n)].iloc[n:]) + [0]*n
+        timeSeries['AKI'] = (timeSeries['Next {n} hours urine output'.format(n=n)] < n*0.5).astype(np.int)
+
+
+def dropNRows(allTimeSeries, n=6):
+    for timeSeries in allTimeSeries:
+        timeSeries.drop(timeSeries.index[-n:], inplace=True)
+
+
 if __name__ == "__main__":
     stays = getICUStayPatients()
     print("Select {n} icu stay patients".format(n=len(stays)))
     allTimeSeries = getAllPatientsTimeSeries(stays)
     print("Extracted time series for all patients.")
+    addNextNHoursUrineOutput(allTimeSeries, 6)
+    dropNRows(allTimeSeries, 6)
+    allTimeSeries = addNotNullColumnsForAllPatients(allTimeSeries)
+    print("Added not null columns for all patients")
+    allTimeSeries = normalizeFeatures(allTimeSeries)
+    print("Normalized all features")
+    allTimeSeries = fillNaForAllPatients(allTimeSeries)
+    print("Filled Na for all patients")
