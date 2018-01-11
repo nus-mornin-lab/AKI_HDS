@@ -2,7 +2,7 @@ import numpy as np
 
 
 class DataIterator:
-	def __init__(self, timeSeriesList, numBuckets=5):
+	def __init__(self, timeSeriesList, ratio=7.4, numBuckets=5):
 		self.size = len(timeSeriesList)
 		self.numBuckets = numBuckets
 		self.epochs = 0
@@ -16,7 +16,7 @@ class DataIterator:
 			data_i[:self.sequenceLengths[i]] = timeSeriesList[i].values
 		self.musks = np.zeros([len(timeSeriesList), maxLength], dtype=np.int32)
 		for i, musk in enumerate(self.musks):
-			musk[:self.sequenceLengths[i]] = np.ones(self.sequenceLengths[i])
+			musk[:self.sequenceLengths[i]] = np.array([1 if self.data[i, j, -1] == 0 else ratio for j in range(self.sequenceLengths[i])])
 
 	def next_batch(self, n):
 		if np.any(self.cursor + n + 1 > self.size):
