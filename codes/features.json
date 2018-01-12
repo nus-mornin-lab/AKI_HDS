@@ -65,18 +65,18 @@
     "chartevents": [581, 580, 224639, 226512]
   },
   {
+    "label": "Urea Nitrogen",
+    "labevents": [51006]
+  },
+  {
+    "label": "Creatinine",
+    "chartevents": [791, 1525, 220615, 3750],
+    "labevents": [50912, 51081]
+  },
+  {
     "label": "Blood Pressure",
     "chartevents": [220181, 220052, 225312, 224322, 6702, 443, 52, 456]
   }
-//  {
-//    "label": "Urea Nitrogen",
-//    "labevents": [51006]
-//  },
-//  {
-//    "label": "Creatinine",
-//    "chartevents": [791, 1525, 220615, 3750],
-//    "labevents": [50912, 51081]
-//  },
 //  {
 //    "label": "Amylase",
 //    "chartevents": [775, 220581],
