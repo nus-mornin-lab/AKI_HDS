@@ -77,46 +77,4 @@
     "label": "Blood Pressure",
     "chartevents": [220181, 220052, 225312, 224322, 6702, 443, 52, 456]
   }
-//  {
-//    "label": "Amylase",
-//    "chartevents": [775, 220581],
-//    "labevents": [50867]
-//  },
-//  {
-//    "label": "Lipase",
-//    "labevents": [50956]
-//  },
-//  {
-//    "label": "Lactic Acid",
-//    "chartevents": [818, 1531, 225668]
-//  },
-//  {
-//    "label": "ALT",
-//    "chartevents": [769, 220644],
-//    "labevents": [50861]
-//  },
-//  {
-//    "label": "AST",
-//    "chartevents": [770, 220587],
-//    "labevents": [50878]
-//  },
-//  {
-//    "label": "PaO2",
-//    "chartevents": [779, 490, 3785, 3838, 3837],
-//    "labevents": [50821]
-//  },
-//  {
-//    "label": "paCO2",
-//    "chartevents": [778, 3784, 3836, 3835],
-//    "labevents": [50818]
-//  },
-//  {
-//    "label": "Chloride",
-//    "chartevents": [788, 220602, 1523, 4193, 3724, 226536, 3747],
-//    "labevents": [50902, 50806]
-//  },
-//  {
-//    "label": "CVP",
-//    "chartevents": [220074, 113]
-//  }
 ]
