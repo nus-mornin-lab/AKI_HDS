@@ -24,7 +24,11 @@ engine = getEngine()
 
 
 def getPatientsHavingFeature(feature):
-    queryStr = 'SELECT DISTINCT hadm_id FROM {table} WHERE itemid IN {itemids} AND valuenum IS NOT NULL'
+    queryStr = """
+    SELECT DISTINCT hadm_id FROM {table}
+    WHERE itemid IN {itemids} AND valuenum IS NOT NULL
+    AND valuenum  BETWEEN {min} AND {max}
+    """
     hadmIDs = set()
     engine = getEngine()
     for table in ('chartevents', 'labevents'):
@@ -32,7 +36,9 @@ def getPatientsHavingFeature(feature):
         hadmIDs |= set(pd.read_sql_query(
                 queryStr.format(
                     table=table,
-                    itemids='(' + ','.join(list(map(str, feature[table]))) + ')'
+                    itemids='(' + ','.join(list(map(str, feature[table]))) + ')',
+                    min=feature['min'],
+                    max=feature['max']
                 ),
                 con=engine)['hadm_id'].tolist())
     return hadmIDs
@@ -93,11 +99,24 @@ def addFeature(feature, hadmID, timeSeries, con):
             WHERE hadm_id={hadmID} AND itemid IN {itemIDs}
             AND charttime>='{startTime}' AND charttime<='{endTime}'
             AND valuenum IS NOT NULL
+            AND valuenum BETWEEN {min} AND {max}
             """
     if 'chartevents' in feature:
-        charteventsQuery = query.format(table='chartevents', hadmID=hadmID, itemIDs='(' + ','.join(list(map(str, feature['chartevents']))) + ')', startTime=startTime, endTime=endTime)
+        charteventsQuery = query.format(table='chartevents',
+                                        hadmID=hadmID,
+                                        itemIDs='(' + ','.join(list(map(str, feature['chartevents']))) + ')',
+                                        startTime=startTime,
+                                        endTime=endTime,
+                                        min=feature['min'],
+                                        max=feature['max'])
     if 'labevents' in feature:
-        labeventsQuery = query.format(table='labevents', hadmID=hadmID, itemIDs='(' + ','.join(list(map(str, feature['labevents']))) + ')', startTime=startTime, endTime=endTime)
+        labeventsQuery = query.format(table='labevents',
+                                      hadmID=hadmID,
+                                      itemIDs='(' + ','.join(list(map(str, feature['labevents']))) + ')',
+                                      startTime=startTime,
+                                      endTime=endTime,
+                                      min=feature['min'],
+                                      max=feature['max'])
     if charteventsQuery and labeventsQuery:
         query = charteventsQuery + 'UNION' + labeventsQuery
     else:
