@@ -69,7 +69,7 @@
   {
     "label": "Hemoglobin",
     "labevents": [50811, 51222],
-    "max": 16.2
+    "max": 16.2,
     "min": 6.8
   },
   {
