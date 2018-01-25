@@ -2,7 +2,7 @@ import tensorflow as tf
 from data_iterator import DataIterator
 
 
-numFeatures = 60
+numFeatures = 25
 batchSize = 64
 stateSize = 32
 nLayers = 2

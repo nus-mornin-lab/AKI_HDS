@@ -3,7 +3,7 @@ from tensorflow.contrib import rnn
 from data_iterator import DataIterator
 
 
-numFeatures = 60
+numFeatures = 25
 batchSize = 64
 stateSize = 64
 
