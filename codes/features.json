@@ -14,8 +14,8 @@
   {
     "label": "SpO2/SaO2",
     "chartevents": [646, 834, 220277],
-    "max": 87,
-    "min": 100
+    "max": 100,
+    "min": 87
   },
   {
     "label": "pH",
