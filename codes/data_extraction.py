@@ -11,91 +11,16 @@ import time
 
 features_json_data = open('./features.json').read()
 features = json.loads(features_json_data)
-allFeatures = ['age', 'gender', 'CVP', 'Heart Rate',
-                   'Respiratory Rate', 'SpO2/SaO2', 'PaO2', 'paCO2', 'pH', 'Potassium',
-                   'Calcium', 'Glucose', 'Sodium', 'Chloride', 'HCO3', 'White Blood Cells',
-                   'Hemoglobin', 'Red Blood Cells', 'Platelet Count', 'Lactic Acid', 'ALT',
-                   'AST', 'Urea Nitrogen', 'Creatinine', 'Amylase', 'Lipase', 'Weight', 'gcs', 'ventilation',
-                   'vasoactive medications']
+allFeatures = ['age', 'gender', 'Heart Rate',
+                   'Respiratory Rate', 'SpO2/SaO2', 'pH', 'Potassium',
+                   'Calcium', 'Glucose', 'Sodium', 'HCO3', 'White Blood Cells',
+                   'Hemoglobin', 'Red Blood Cells', 'Platelet Count', 
+                   'Urea Nitrogen', 'Creatinine', 'Weight', 'gcs', 'ventilation',
+                   'vasoactive medications', 'Blood Pressure', 'sedative medications']
 mustHaveFeatures = set(['Heart Rate', 'Red Blood Cells', 'Urea Nitrogen', 'Hemoglobin', 'Platelet Count',
-                        'Respiratory Rate', 'Creatinine', 'HCO3', 'Calcium',
+                        'Respiratory Rate', 'Creatinine', 'HCO3', 'Chloride', 'Calcium',
                         'White Blood Cells', 'Potassium', 'Sodium', 'SpO2/SaO2', 'Glucose'])
-
-sql = """
-        SELECT COUNT(*) FROM (SELECT MAX(i.hadm_id) AS hadm_id, i.icustay_id, MAX(p.gender) AS gender, MAX(p.dob) AS dob, MAX(i.intime) AS intime, MAX(i.outtime) AS outtime, MAX(p.dod) AS dod, MAX(i.los) AS los, MAX(o.charttime)-MIN(o.charttime)     
-        FROM icustays AS i
-        LEFT JOIN patients AS p ON i.subject_id=p.subject_id
-        LEFT JOIN outputevents AS o  ON o.icustay_id=i.icustay_id
-        WHERE first_wardid=last_wardid
-        AND first_careunit=last_careunit
-        AND los>=0.5 AND los<=30
-        AND i.outtime-i.intime>=interval '12' hour AND (p.dod IS NULL OR p.dod-i.intime>=interval '12' hour)
-        AND o.itemid IN (40055, -- "Urine Out Foley"
-          43175, -- "Urine ."
-          40069, -- "Urine Out Void"
-          40094, -- "Urine Out Condom Cath"
-          40715, -- "Urine Out Suprapubic"
-          40473, -- "Urine Out IleoConduit"
-          40085, -- "Urine Out Incontinent"
-          40057, -- "Urine Out Rt Nephrostomy"
-          40056, -- "Urine Out Lt Nephrostomy"
-          40405, -- "Urine Out Other"
-          40428, -- "Urine Out Straight Cath"
-          40086,--	Urine Out Incontinent
-          40096, -- "Urine Out Ureteral Stent #1"
-          40651, -- "Urine Out Ureteral Stent #2"
-        
-          -- these are the most frequently occurring urine output observations in MetaVision
-          226559, -- "Foley"
-          226560, -- "Void"
-          226561, -- "Condom Cath"
-          226584, -- "Ileoconduit"
-          226563, -- "Suprapubic"
-          226564, -- "R Nephrostomy"
-          226565, -- "L Nephrostomy"
-          226567, --	Straight Cath
-          226557, -- R Ureteral Stent
-          226558, -- L Ureteral Stent
-          227488, -- GU Irrigant Volume In
-          227489
-          )
-          GROUP BY i.icustay_id HAVING MAX(o.charttime)-MIN(o.charttime)>=interval '12' hour) AS a;
-      """
-urineOutputIDs = (
-    # these are the most frequently occurring urine output observations in CareVue
-    40055, # "Urine Out Foley"
-    43175, # "Urine ."
-    40069, # "Urine Out Void"
-    40094, # "Urine Out Condom Cath"
-    40715, # "Urine Out Suprapubic"
-    40473, # "Urine Out IleoConduit"
-    40085, # "Urine Out Incontinent"
-    40057, # "Urine Out Rt Nephrostomy"
-    40056, # "Urine Out Lt Nephrostomy"
-    40405, # "Urine Out Other"
-    40428, # "Urine Out Straight Cath"
-    40086, # "Urine Out Incontinent"
-    40096, # "Urine Out Ureteral Stent #1"
-    40651, # "Urine Out Ureteral Stent #2"
-    # these are the most frequently occurring urine output observations in MetaVision
-    226559, # "Foley"
-    226560, # "Void"
-    226561, # "Condom Cath"
-    226584, # "Ileoconduit"
-    226563, # "Suprapubic"
-    226564, # "R Nephrostomy"
-    226565, # "L Nephrostomy"
-    226567, #	Straight Cath
-    226557, # R Ureteral Stent
-    226558, # L Ureteral Stent
-    227488, # GU Irrigant Volume In
-    227489  # GU Irrigant/Urine Volume Out
-    )
 engine = getEngine()
-
-
-def getPAtientsHavingTemperature():
-    return getPatientsHavingFeature({'chartevents': [3655, 223762, 223761, 678]})
 
 
 def getPatientsHavingFeature(feature):
@@ -116,8 +41,7 @@ def getPatientsHavingFeature(feature):
 def getPatientsHavingAllMustHaveFeatures():
     # run up to 30 db queries at a time
     pool = ThreadPoolExecutor(30)
-    filters = [pool.submit(getPatientsHavingFeature, feature) for feature in features]
-    filters += [pool.submit(getPAtientsHavingTemperature)]
+    filters = [pool.submit(getPatientsHavingFeature, feature) for feature in features if feature['label'] in mustHaveFeatures]
     wait(filters)
     filters = [filter.result() for filter in filters]
     return set.intersection(*filters)
@@ -130,17 +54,14 @@ def getICUStayPatients(engine=engine, force_reload=False):
         icustays = pd.read_csv(icustays_filepath)
     else:
         icustays = pd.read_sql_query("""
-            SELECT MAX(i.hadm_id) AS hadm_id, i.icustay_id, MAX(p.gender) AS gender, MAX(p.dob) AS dob, MAX(i.intime) AS intime, MAX(i.outtime) AS outtime, MAX(p.dod) AS dod, MAX(i.los) AS los   
+            SELECT i.hadm_id, i.icustay_id, p.gender, p.dob, i.intime, i.outtime, p.dod, i.los
             FROM icustays AS i
             LEFT JOIN patients AS p ON i.subject_id=p.subject_id
-            LEFT JOIN outputevents AS o ON o.icustay_id=i.icustay_id
             WHERE first_wardid=last_wardid
             AND first_careunit=last_careunit
             AND los>=0.5 AND los<=30
-            AND i.outtime-i.intime>=interval '12' hour AND (p.dod IS NULL OR p.dod-i.intime>=interval '12' hour)
-            AND o.itemid IN {itemIDs}
-            GROUP BY i.icustay_id HAVING MAX(o.charttime)-MIN(o.charttime)>=interval '12' hour
-        """.format(itemIDs=urineOutputIDs), con=engine)
+            AND i.outtime-i.intime>=interval '12' hour AND p.dod-i.intime>=interval '12' hour;
+            """, con=engine)
         # get patients having all the features we need
         hadmIDs = getPatientsHavingAllMustHaveFeatures()
         icustays = icustays[icustays['hadm_id'].isin(hadmIDs)]
@@ -163,7 +84,26 @@ def roundTimeToNearestHour(dt):
     return datetime(year=dt.year, month=dt.month, day=dt.day, hour=dt.hour)
 
 
-def addEventsToTimeSeries(label, chartAndLabEvents, timeSeries):
+def addFeature(feature, hadmID, timeSeries, con):
+    startTime = timeSeries['Time'][0]
+    endTime = timeSeries['Time'][len(timeSeries)-1]
+    charteventsQuery = labeventsQuery = None
+    query = """
+            SELECT valuenum, charttime FROM {table}
+            WHERE hadm_id={hadmID} AND itemid IN {itemIDs}
+            AND charttime>='{startTime}' AND charttime<='{endTime}'
+            AND valuenum IS NOT NULL
+            """
+    if 'chartevents' in feature:
+        charteventsQuery = query.format(table='chartevents', hadmID=hadmID, itemIDs='(' + ','.join(list(map(str, feature['chartevents']))) + ')', startTime=startTime, endTime=endTime)
+    if 'labevents' in feature:
+        labeventsQuery = query.format(table='labevents', hadmID=hadmID, itemIDs='(' + ','.join(list(map(str, feature['labevents']))) + ')', startTime=startTime, endTime=endTime)
+    if charteventsQuery and labeventsQuery:
+        query = charteventsQuery + 'UNION' + labeventsQuery
+    else:
+        query = charteventsQuery if charteventsQuery else labeventsQuery
+    query += ';'
+    chartAndLabEvents = pd.read_sql(query, con=con)
     chartAndLabEvents['charttime'] = chartAndLabEvents['charttime'].apply(roundTimeToNearestHour)
     recordsSum = defaultdict(float)
     recordsCount = defaultdict(int)
@@ -171,55 +111,51 @@ def addEventsToTimeSeries(label, chartAndLabEvents, timeSeries):
         timeStr = str(row['charttime'])
         recordsSum[timeStr] += row['valuenum']
         recordsCount[timeStr] += 1
-    featureColumn = pd.Series(
-        [recordsSum[str(time)] / recordsCount[str(time)] if str(time) in recordsSum else np.nan for time in
-         timeSeries['Time']])
-    timeSeries[label] = featureColumn
+    featureColumn = pd.Series([recordsSum[str(time)]/recordsCount[str(time)] if str(time) in recordsSum else np.nan for time in timeSeries['Time']])
+    timeSeries[feature['label']] = featureColumn
 
 
-def addTemperature(hadmID, timeSeries, con):
-    query = """
-            SELECT valuenum, charttime FROM chartevents
-            WHERE hadm_id={hadmID} AND itemid IN {itemIDs}
-            AND valuenum IS NOT NULL
-            """
-    farenheit = pd.read_sql(query.format(hadmID=hadmID, itemIDs='(3655, 223762)'), con=con)
-    temperature = pd.read_sql(query.format(hadmID=hadmID, itemIDs='(223761, 678)'), con=con)
-    farenheit['valuenum'] = (farenheit['valuenum'] - 32) / 1.8
-    temperature.append(farenheit)
-    addEventsToTimeSeries("temperature", temperature, timeSeries)
-
-
-def addFeature(feature, hadmID, timeSeries, con):
-    charteventsQuery = labeventsQuery = None
-    query = """
-            SELECT valuenum, charttime FROM {table}
-            WHERE hadm_id={hadmID} AND itemid IN {itemIDs}
-            AND valuenum IS NOT NULL
-            """
-    if 'chartevents' in feature:
-        charteventsQuery = query.format(table='chartevents', hadmID=hadmID, itemIDs='(' + ','.join(list(map(str, feature['chartevents']))) + ')')
-    if 'labevents' in feature:
-        labeventsQuery = query.format(table='labevents', hadmID=hadmID, itemIDs='(' + ','.join(list(map(str, feature['labevents']))) + ')')
-    if charteventsQuery and labeventsQuery:
-        query = charteventsQuery + 'UNION' + labeventsQuery
-    else:
-        query = charteventsQuery if charteventsQuery else labeventsQuery
-    query += ';'
-    chartAndLabEvents = pd.read_sql(query, con=con)
-    addEventsToTimeSeries(feature['label'], chartAndLabEvents, timeSeries)
-
-
-def addUrineOutput(hadmID, timeSeries, con, windowSize=6):
+def addUrineOutput(hadmID, timeSeries, con):
     urineOutputs = pd.read_sql("""
     SELECT charttime,
     case when itemid = 227488 then -1*value else value end AS value
     FROM outputevents
     WHERE hadm_id={hadmID} AND 
     value IS NOT NULL AND
-    itemid IN {urineOutputIDs};
-    """.format(hadmID=hadmID, urineOutputIDs=urineOutputIDs), con)
+    itemid IN (
+    -- these are the most frequently occurring urine output observations in CareVue
+    40055, -- "Urine Out Foley"
+    43175, -- "Urine ."
+    40069, -- "Urine Out Void"
+    40094, -- "Urine Out Condom Cath"
+    40715, -- "Urine Out Suprapubic"
+    40473, -- "Urine Out IleoConduit"
+    40085, -- "Urine Out Incontinent"
+    40057, -- "Urine Out Rt Nephrostomy"
+    40056, -- "Urine Out Lt Nephrostomy"
+    40405, -- "Urine Out Other"
+    40428, -- "Urine Out Straight Cath"
+    40086,--	Urine Out Incontinent
+    40096, -- "Urine Out Ureteral Stent #1"
+    40651, -- "Urine Out Ureteral Stent #2"
+    
+    -- these are the most frequently occurring urine output observations in MetaVision
+    226559, -- "Foley"
+    226560, -- "Void"
+    226561, -- "Condom Cath"
+    226584, -- "Ileoconduit"
+    226563, -- "Suprapubic"
+    226564, -- "R Nephrostomy"
+    226565, -- "L Nephrostomy"
+    226567, --	Straight Cath
+    226557, -- R Ureteral Stent
+    226558, -- L Ureteral Stent
+    227488, -- GU Irrigant Volume In
+    227489  -- GU Irrigant/Urine Volume Out
+    );
+    """.format(hadmID=hadmID), con)
     urineOutputs['charttime'] = urineOutputs['charttime'].apply(roundTimeToNearestHour)
+    windowSize = 6
     validTimes = set(list(map(str, timeSeries['Time'].tolist()))[windowSize:])
     timedeltas = [timedelta(hours=i) for i in range(windowSize)]
     urineOutputsSum = {time: 0 for time in validTimes}
@@ -324,17 +260,12 @@ def addProcedure(procedure, icustayID, timeSeries, con):
                else 0 for time in timeSeries['Time']])
 
 
-def getTimeStamps(patientStay, con):
-    # timestamps should be between the first and last urine output times
-    urineOutputStartAndEnd = pd.read_sql("""
-      SELECT MIN(charttime) AS start, MAX(charttime) AS end FROM outputevents
-      WHERE icustay_id={icustayID} AND itemid IN {itemid};
-      """.format(icustayID=patientStay['icustay_id'], itemid=urineOutputIDs), con=con)
-    startTime = roundTimeToNearestHour(max(urineOutputStartAndEnd['start'].iloc[0], patientStay['intime']))
+def getTimeStamps(patientStay):
+    startTime = roundTimeToNearestHour(patientStay['intime'])
     if patientStay['dod']:
-        endTime = roundTimeToNearestHour(min(urineOutputStartAndEnd['end'].iloc[0], patientStay['outtime'], patientStay['dod']))
+        endTime = roundTimeToNearestHour(min(patientStay['outtime'], patientStay['dod']))
     else:
-        endTime = roundTimeToNearestHour(min(urineOutputStartAndEnd['end'].iloc[0], patientStay['outtime']))
+        endTime = roundTimeToNearestHour(patientStay['outtime'])
     hour = timedelta(hours=1)
     gap = endTime - startTime
     gapInHours = gap.days*24+gap.seconds//3600
@@ -344,20 +275,19 @@ def getTimeStamps(patientStay, con):
 def getPatientTimeSeries(patientStay):
     icustayID = patientStay['icustay_id']
     hadmID = patientStay['hadm_id']
-    con = getEngine()
-    timeSeries = pd.DataFrame({'Time': getTimeStamps(patientStay, con)})
+    timeSeries = pd.DataFrame({'Time': getTimeStamps(patientStay)})
     timeSeries['icustay_id'] = pd.Series([icustayID] * len(timeSeries))
     timeSeries['hadm_id'] = pd.Series([hadmID] * len(timeSeries))
     timeSeries['age'] = pd.Series([patientStay['age']] * len(timeSeries))
     timeSeries['gender'] = pd.Series([patientStay['gender']] * len(timeSeries))
+    con = getEngine()
     for feature in features:
         addFeature(feature, hadmID, timeSeries, con)
-    addTemperature(hadmID, timeSeries, con)
-    addUrineOutput(hadmID, timeSeries, con, windowSize=1)
-    addUrineOutput(hadmID, timeSeries, con, windowSize=6)
-    # addGCS(hadmID, timeSeries, con)
+    addUrineOutput(hadmID, timeSeries, con)
+    addGCS(hadmID, timeSeries, con)
     addProcedure({'view': 'ventdurations', 'label': 'ventilation'}, icustayID, timeSeries, con)
     addProcedure({'view': 'vasopressordurations', 'label': 'vasoactive medications'}, icustayID, timeSeries, con)
+    addProcedure({'view': 'sedativedurations', 'label': 'sedative medications'}, icustayID, timeSeries, con)
     return timeSeries
 
 
@@ -400,12 +330,12 @@ def addNotNullColumnsForAllPatients(allTimeSeries, forceReload=False):
     allTimeSeriesWithNotNullColumns = []
     for i in range(0, len(allTimeSeries), 100):
         pool = ProcessPoolExecutor()
-        batchTimeSeries = [pool.submit(addNotNullColumns, allTimeSeries[j]) for j in range(i, min(i+100, len(stays)))]
+        batchTimeSeries = [pool.submit(addNotNullColumns, allTimeSeries[j]) for j in range(i, min(i+100, len(allTimeSeries)))]
         wait(batchTimeSeries)
         batchTimeSeries = [timeSeries.result() for timeSeries in batchTimeSeries]
         allTimeSeriesWithNotNullColumns += batchTimeSeries
         if (i+100) % 1000 == 0:
-            print("Added not null columns for {n} patients.".format(n=min(i+100, len(stays))))
+            print("Added not null columns for {n} patients.".format(n=min(i+100, len(allTimeSeries))))
     allTimeSeriesConcat = pd.concat(allTimeSeriesWithNotNullColumns)
     allTimeSeriesConcat.to_csv(fileName, index=False)
     return allTimeSeriesWithNotNullColumns
@@ -416,6 +346,7 @@ def fillNa(timeSeries):
         timeSeries[feature].interpolate(method='ffill', inplace=True)
         timeSeries[feature].fillna(method='ffill', inplace=True)
         timeSeries[feature].fillna(method='backfill', inplace=True)
+    timeSeries.fillna(0, inplace=True)
     return timeSeries
 
 
@@ -430,12 +361,12 @@ def fillNaForAllPatients(allTimeSeries, forceReload=False):
     allTimeSeriesFillNa = []
     for i in range(0, len(allTimeSeries), 100):
         pool = ProcessPoolExecutor()
-        batchTimeSeries = [pool.submit(fillNa, allTimeSeries[j]) for j in range(i, min(i + 100, len(stays)))]
+        batchTimeSeries = [pool.submit(fillNa, allTimeSeries[j]) for j in range(i, min(i + 100, len(allTimeSeries)))]
         wait(batchTimeSeries)
         batchTimeSeries = [timeSeries.result() for timeSeries in batchTimeSeries]
         allTimeSeriesFillNa += batchTimeSeries
         if (i + 100) % 1000 == 0:
-            print("Fill na for {n} patients.".format(n=min(i + 100, len(stays))))
+            print("Fill na for {n} patients.".format(n=min(i + 100, len(allTimeSeries))))
     allTimeSeriesConcat = pd.concat(allTimeSeriesFillNa)
     allTimeSeriesConcat.to_csv(fileName, index=False)
     return allTimeSeriesFillNa
@@ -465,7 +396,7 @@ def addNextNHoursUrineOutput(allTimeSeries, n=6):
     for timeSeries in allTimeSeries:
         timeSeries['Next {n} hours urine output'.format(n=n)] = \
             list(timeSeries['{n} hours urine output'.format(n=n)].iloc[n:]) + [0]*n
-        timeSeries['AKI'] = (timeSeries['Next {n} hours urine output'.format(n=n)]/timeSeries['Weight'] < n*0.5).astype(np.int)
+        timeSeries['AKI'] = (timeSeries['Next {n} hours urine output'.format(n=n)] < n*0.5).astype(np.int)
 
 
 def dropNRows(allTimeSeries, n=6):
@@ -480,8 +411,8 @@ if __name__ == "__main__":
     print("Extracted time series for all patients.")
     addNextNHoursUrineOutput(allTimeSeries, 6)
     dropNRows(allTimeSeries, 6)
-    # allTimeSeries = addNotNullColumnsForAllPatients(allTimeSeries)
-    # print("Added not null columns for all patients")
+    allTimeSeries = addNotNullColumnsForAllPatients(allTimeSeries)
+    print("Added not null columns for all patients")
     allTimeSeries = normalizeFeatures(allTimeSeries)
     print("Normalized all features")
     allTimeSeries = fillNaForAllPatients(allTimeSeries)
