@@ -1,7 +1,7 @@
 import tensorflow as tf
 from data_iterator import DataIterator
 
-numFeatures = 25
+numFeatures = 24
 batchSize = 256
 stateSizes = (256, 128, 64, 32)
 keepProb = 0.5
