@@ -14,7 +14,7 @@ def buildGraph(numFeatures=numFeatures, batchSize=batchSize, stateSizes=stateSiz
     musk = tf.placeholder(tf.float64, [batchSize, None])  # [batchSize, num_steps]
 
     def getCell(stateSize):
-        cell = tf.nn.rnn_cell.LSTMCell(stateSize, forget_bias=3.0, activation=tf.nn.relu, state_is_tuple=True)
+        cell = tf.nn.rnn_cell.LSTMCell(stateSize, forget_bias=1.0, activation=tf.nn.relu, state_is_tuple=True)
         cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=keepProb)
         return cell
 
@@ -28,12 +28,12 @@ def buildGraph(numFeatures=numFeatures, batchSize=batchSize, stateSizes=stateSiz
     logits = tf.matmul(outputs, W) + b  # [batchSize, num_steps]
     predicts = tf.nn.sigmoid(logits)
     predicts = tf.reshape(predicts, [batchSize, -1])
-    losses = -y * tf.log(tf.clip_by_value(predicts, 1e-10, 1.0)) - (1 - y) * tf.log(
+    costs = -y * tf.log(tf.clip_by_value(predicts, 1e-10, 1.0)) - (1 - y) * tf.log(
         tf.clip_by_value(1 - predicts, 1e-10, 1.0))
-    losses *= musk
-    loss = tf.reduce_mean(tf.reduce_sum(losses, reduction_indices=[1]))
+    costs *= musk
+    cost = tf.reduce_mean(tf.reduce_sum(costs, reduction_indices=[1]))
     accuracy = tf.reduce_sum(tf.cast(tf.abs(predicts - y) < 0.5, tf.float64) * musk) / tf.reduce_sum(musk)
-    trainStep = tf.train.AdamOptimizer(1e-4).minimize(loss)
+    trainStep = tf.train.AdamOptimizer(1e-4).minimize(cost)
     return {
         'x': x,
         'y': y,
@@ -41,22 +41,25 @@ def buildGraph(numFeatures=numFeatures, batchSize=batchSize, stateSizes=stateSiz
         'musk': musk,
         'trainStep': trainStep,
         'predicts': predicts,
-        'accuracy': accuracy
+        'accuracy': accuracy,
+        'cost': cost
     }
 
 
-def trainGraph(g, sess, train, test, epochs=10):
+def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize):
     tr = DataIterator(train)
     te = DataIterator(test)
 
     step, accuracy = 0, 0
     trLosses, teLosses = [], []
     current_epoch = 0
+    totalCost = 0
     while current_epoch < epochs:
         step += 1
         batch = tr.next_batch(batchSize)
         feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['musk']: batch[3]}
-        accuracy_, _ = sess.run([g['accuracy'], g['trainStep']], feed_dict=feed)
+        accuracy_, cost, _ = sess.run([g['accuracy'], g['cost'], g['trainStep']], feed_dict=feed)
+        totalCost += cost
         accuracy += accuracy_
 
         if tr.epochs > current_epoch:
@@ -74,5 +77,5 @@ def trainGraph(g, sess, train, test, epochs=10):
                 accuracy += accuracy_
 
             teLosses.append(accuracy / step)
-            step, accuracy = 0, 0
-            print("Accuracy after epoch", current_epoch, " - tr:", trLosses[-1], "- te:", teLosses[-1])
+            print("Accuracy after epoch", current_epoch, "cost: ", totalCost/step, " - tr:", trLosses[-1], "- te:", teLosses[-1])
+            step, accuracy, totalCost = 0, 0, 0
