@@ -7,14 +7,15 @@ stateSizes = (256, 128, 64, 32)
 keepProb = 0.5
 
 
-def buildGraph(numFeatures=numFeatures, batchSize=batchSize, stateSizes=stateSizes, keepProb=keepProb):
-    x = tf.placeholder(tf.float64, [batchSize, None, numFeatures])  # [batchSize, num_steps, numFeatures]
-    sequenceLengths = tf.placeholder(tf.int32, [batchSize])  # [batchSize]
-    y = tf.placeholder(tf.float64, [batchSize, None])  # [batchSize, num_steps]
-    musk = tf.placeholder(tf.float64, [batchSize, None])  # [batchSize, num_steps]
+def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes, keepProb=keepProb):
+    x = tf.placeholder(tf.float64, [None, None, numFeatures])  # [batchSize, num_steps, numFeatures]
+    sequenceLengths = tf.placeholder(tf.int32, [None])  # [batchSize]
+    y = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
+    musk = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
+    batchSize = tf.shape(x)[0]
 
     def getCell(stateSize):
-        cell = tf.nn.rnn_cell.LSTMCell(stateSize, forget_bias=1.0, activation=tf.nn.relu, state_is_tuple=True)
+        cell = tf.nn.rnn_cell.GRUCell(stateSize, activation=tf.nn.relu)
         cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=keepProb)
         return cell
 
@@ -51,7 +52,7 @@ def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize):
     te = DataIterator(test)
 
     step, accuracy = 0, 0
-    trLosses, teLosses = [], []
+    trLosses = []
     current_epoch = 0
     totalCost = 0
     while current_epoch < epochs:
@@ -65,17 +66,9 @@ def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize):
         if tr.epochs > current_epoch:
             current_epoch += 1
             trLosses.append(accuracy / step)
-            step, accuracy = 0, 0
-
             # eval test set
-            teEpoch = te.epochs
-            while te.epochs == teEpoch:
-                step += 1
-                batch = te.next_batch(batchSize)
-                feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['musk']: batch[3]}
-                accuracy_ = sess.run([g['accuracy']], feed_dict=feed)[0]
-                accuracy += accuracy_
-
-            teLosses.append(accuracy / step)
-            print("Accuracy after epoch", current_epoch, "cost: ", totalCost/step, " - tr:", trLosses[-1], "- te:", teLosses[-1])
+            batch = te.next_batch()
+            feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['musk']: batch[3]}
+            accuracy = sess.run([g['accuracy']], feed_dict=feed)[0]
+            print("Accuracy after epoch", current_epoch, "cost: ", totalCost/step, " - tr:", trLosses[-1], "- te:", accuracy)
             step, accuracy, totalCost = 0, 0, 0
