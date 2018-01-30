@@ -19,7 +19,9 @@ class DataIterator:
             musk[:self.sequenceLengths[i]] = np.array(
                 [1 if self.data[i, j, -1] == 0 else ratio for j in range(self.sequenceLengths[i])])
 
-    def next_batch(self, n):
+    def next_batch(self, n=None):
+        if n is None:
+            n = self.size
         index = min(self.cursor + n, self.size)
         maxLength = max(self.sequenceLengths[self.cursor:index])
         x = self.data[self.cursor:index, :maxLength, :-1]
