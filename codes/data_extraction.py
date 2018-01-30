@@ -9,6 +9,44 @@ import json
 from collections import defaultdict
 import time
 
+urineOutputQuery = """
+    SELECT charttime,
+    case when itemid = 227488 then -1*value else value end AS value
+    FROM outputevents
+    WHERE hadm_id={hadmID} AND 
+    value IS NOT NULL AND
+    itemid IN (
+    -- these are the most frequently occurring urine output observations in CareVue
+    40055, -- "Urine Out Foley"
+    43175, -- "Urine ."
+    40069, -- "Urine Out Void"
+    40094, -- "Urine Out Condom Cath"
+    40715, -- "Urine Out Suprapubic"
+    40473, -- "Urine Out IleoConduit"
+    40085, -- "Urine Out Incontinent"
+    40057, -- "Urine Out Rt Nephrostomy"
+    40056, -- "Urine Out Lt Nephrostomy"
+    40405, -- "Urine Out Other"
+    40428, -- "Urine Out Straight Cath"
+    40086,--	Urine Out Incontinent
+    40096, -- "Urine Out Ureteral Stent #1"
+    40651, -- "Urine Out Ureteral Stent #2"
+    
+    -- these are the most frequently occurring urine output observations in MetaVision
+    226559, -- "Foley"
+    226560, -- "Void"
+    226561, -- "Condom Cath"
+    226584, -- "Ileoconduit"
+    226563, -- "Suprapubic"
+    226564, -- "R Nephrostomy"
+    226565, -- "L Nephrostomy"
+    226567, --	Straight Cath
+    226557, -- R Ureteral Stent
+    226558, -- L Ureteral Stent
+    227488, -- GU Irrigant Volume In
+    227489  -- GU Irrigant/Urine Volume Out
+    );
+    """
 features_json_data = open('./features.json').read()
 features = json.loads(features_json_data)
 allFeatures = ['age', 'gender', 'Heart Rate',
@@ -134,49 +172,11 @@ def addFeature(feature, hadmID, timeSeries, con):
     timeSeries[feature['label']] = featureColumn
 
 
-def addUrineOutput(hadmID, timeSeries, con):
-    urineOutputs = pd.read_sql("""
-    SELECT charttime,
-    case when itemid = 227488 then -1*value else value end AS value
-    FROM outputevents
-    WHERE hadm_id={hadmID} AND 
-    value IS NOT NULL AND
-    itemid IN (
-    -- these are the most frequently occurring urine output observations in CareVue
-    40055, -- "Urine Out Foley"
-    43175, -- "Urine ."
-    40069, -- "Urine Out Void"
-    40094, -- "Urine Out Condom Cath"
-    40715, -- "Urine Out Suprapubic"
-    40473, -- "Urine Out IleoConduit"
-    40085, -- "Urine Out Incontinent"
-    40057, -- "Urine Out Rt Nephrostomy"
-    40056, -- "Urine Out Lt Nephrostomy"
-    40405, -- "Urine Out Other"
-    40428, -- "Urine Out Straight Cath"
-    40086,--	Urine Out Incontinent
-    40096, -- "Urine Out Ureteral Stent #1"
-    40651, -- "Urine Out Ureteral Stent #2"
-    
-    -- these are the most frequently occurring urine output observations in MetaVision
-    226559, -- "Foley"
-    226560, -- "Void"
-    226561, -- "Condom Cath"
-    226584, -- "Ileoconduit"
-    226563, -- "Suprapubic"
-    226564, -- "R Nephrostomy"
-    226565, -- "L Nephrostomy"
-    226567, --	Straight Cath
-    226557, -- R Ureteral Stent
-    226558, -- L Ureteral Stent
-    227488, -- GU Irrigant Volume In
-    227489  -- GU Irrigant/Urine Volume Out
-    );
-    """.format(hadmID=hadmID), con)
+def addUrineOutput(hadmID, timeSeries, con, windowSize=6, offset=1):
+    urineOutputs = pd.read_sql(urineOutputQuery.format(hadmID=hadmID), con)
     urineOutputs['charttime'] = urineOutputs['charttime'].apply(roundTimeToNearestHour)
-    windowSize = 6
-    validTimes = set(list(map(str, timeSeries['Time'].tolist()))[windowSize:])
-    timedeltas = [timedelta(hours=i) for i in range(windowSize)]
+    validTimes = set(list(map(str, timeSeries['Time'].tolist()))[windowSize-1+offset:])
+    timedeltas = [timedelta(hours=i) for i in range(offset, windowSize+offset)]
     urineOutputsSum = {time: 0 for time in validTimes}
     for _, row in urineOutputs.iterrows():
         value = row['value']
@@ -184,7 +184,7 @@ def addUrineOutput(hadmID, timeSeries, con):
             time = row['charttime'] + delta
             if str(time) in validTimes:
                 urineOutputsSum[str(time)] += value
-    urineOutputColumn = pd.Series([urineOutputsSum[str(time)] if str(time) in urineOutputsSum else np.nan for time in timeSeries['Time']])
+    urineOutputColumn = pd.Series([urineOutputsSum[str(time)] if str(time) in urineOutputsSum else 0 for time in timeSeries['Time']])
     timeSeries['{n} hours urine output'.format(n=windowSize)] = urineOutputColumn
 
 
@@ -283,6 +283,7 @@ def getPatientTimeSeries(patientStay):
     con = getEngine()
     for feature in features:
         addFeature(feature, hadmID, timeSeries, con)
+    addUrineOutput(hadmID, timeSeries, con, windowSize=1, offset=0)
     addUrineOutput(hadmID, timeSeries, con)
     addGCS(hadmID, timeSeries, con)
     addProcedure({'view': 'ventdurations', 'label': 'ventilation'}, icustayID, timeSeries, con)
