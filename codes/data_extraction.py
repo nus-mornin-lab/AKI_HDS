@@ -54,10 +54,7 @@ allFeatures = ['age', 'gender', 'Heart Rate',
                    'Calcium', 'Glucose', 'Sodium', 'HCO3', 'White Blood Cells',
                    'Hemoglobin', 'Red Blood Cells', 'Platelet Count', 
                    'Urea Nitrogen', 'Creatinine', 'Weight', 'gcs', 'ventilation',
-                   'vasoactive medications', 'Blood Pressure', 'sedative medications']
-mustHaveFeatures = set(['Heart Rate', 'Red Blood Cells', 'Urea Nitrogen', 'Hemoglobin', 'Platelet Count',
-                        'Respiratory Rate', 'Creatinine', 'HCO3', 'Chloride', 'Calcium',
-                        'White Blood Cells', 'Potassium', 'Sodium', 'SpO2/SaO2', 'Glucose'])
+                   'vasoactive medications', 'Blood Pressure', 'sedative medications', '1 hours urine output']
 engine = getEngine()
 
 
@@ -82,10 +79,10 @@ def getPatientsHavingFeature(feature):
     return hadmIDs
 
 
-def getPatientsHavingAllMustHaveFeatures():
+def getPatientsHavingAllFeatures():
     # run up to 30 db queries at a time
     pool = ThreadPoolExecutor(30)
-    filters = [pool.submit(getPatientsHavingFeature, feature) for feature in features if feature['label'] in mustHaveFeatures]
+    filters = [pool.submit(getPatientsHavingFeature, feature) for feature in features if feature['label']]
     wait(filters)
     filters = [filter.result() for filter in filters]
     return set.intersection(*filters)
@@ -107,7 +104,7 @@ def getICUStayPatients(engine=engine, force_reload=False):
             AND i.outtime-i.intime>=interval '12' hour AND p.dod-i.intime>=interval '12' hour;
             """, con=engine)
         # get patients having all the features we need
-        hadmIDs = getPatientsHavingAllMustHaveFeatures()
+        hadmIDs = getPatientsHavingAllFeatures()
         icustays = icustays[icustays['hadm_id'].isin(hadmIDs)]
         # calculate the age
         icustays['age'] = icustays['intime'] - icustays['dob']
@@ -272,6 +269,21 @@ def getTimeStamps(patientStay):
     return pd.Series([startTime+hour*i for i in range(gapInHours+1)])
 
 
+def addNextNHoursUrineOutput(timeSeries, n=6):
+    timeSeries['Next {n} hours urine output'.format(n=n)] = \
+        list(timeSeries['{n} hours urine output'.format(n=n)].iloc[n:]) + [0]*n
+    timeSeries['AKI'] = (timeSeries['Next {n} hours urine output'.format(n=n)] < n*0.5).astype(np.int)
+
+
+def fillNa(timeSeries):
+    for feature in allFeatures:
+        timeSeries[feature].interpolate(method='ffill', inplace=True)
+        timeSeries[feature].fillna(method='ffill', inplace=True)
+        timeSeries[feature].fillna(method='backfill', inplace=True)
+    timeSeries.fillna(0, inplace=True)
+    return timeSeries
+
+
 def getPatientTimeSeries(patientStay):
     icustayID = patientStay['icustay_id']
     hadmID = patientStay['hadm_id']
@@ -285,10 +297,12 @@ def getPatientTimeSeries(patientStay):
         addFeature(feature, hadmID, timeSeries, con)
     addUrineOutput(hadmID, timeSeries, con, windowSize=1, offset=0)
     addUrineOutput(hadmID, timeSeries, con)
+    addNextNHoursUrineOutput(timeSeries, 6)
     addGCS(hadmID, timeSeries, con)
     addProcedure({'view': 'ventdurations', 'label': 'ventilation'}, icustayID, timeSeries, con)
     addProcedure({'view': 'vasopressordurations', 'label': 'vasoactive medications'}, icustayID, timeSeries, con)
     addProcedure({'view': 'sedativedurations', 'label': 'sedative medications'}, icustayID, timeSeries, con)
+    fillNa(timeSeries)
     return timeSeries
 
 
@@ -342,37 +356,6 @@ def addNotNullColumnsForAllPatients(allTimeSeries, forceReload=False):
     return allTimeSeriesWithNotNullColumns
 
 
-def fillNa(timeSeries):
-    for feature in allFeatures:
-        timeSeries[feature].interpolate(method='ffill', inplace=True)
-        timeSeries[feature].fillna(method='ffill', inplace=True)
-        timeSeries[feature].fillna(method='backfill', inplace=True)
-    timeSeries.fillna(0, inplace=True)
-    return timeSeries
-
-
-def fillNaForAllPatients(allTimeSeries, forceReload=False):
-    fileName = './time_series_fillna.csv'
-    file = Path(fileName)
-    if not forceReload and file.is_file():
-        allTimeSeriesConcat = pd.read_csv(file)
-        allTimeSeries = [timeSeries.sort_values('Time') for icustayID, timeSeries in
-                         allTimeSeriesConcat.groupby('icustay_id')]
-        return allTimeSeries
-    allTimeSeriesFillNa = []
-    for i in range(0, len(allTimeSeries), 100):
-        pool = ProcessPoolExecutor()
-        batchTimeSeries = [pool.submit(fillNa, allTimeSeries[j]) for j in range(i, min(i + 100, len(allTimeSeries)))]
-        wait(batchTimeSeries)
-        batchTimeSeries = [timeSeries.result() for timeSeries in batchTimeSeries]
-        allTimeSeriesFillNa += batchTimeSeries
-        if (i + 100) % 1000 == 0:
-            print("Fill na for {n} patients.".format(n=min(i + 100, len(allTimeSeries))))
-    allTimeSeriesConcat = pd.concat(allTimeSeriesFillNa)
-    allTimeSeriesConcat.to_csv(fileName, index=False)
-    return allTimeSeriesFillNa
-
-
 def normalizeFeatures(allTimeSeries, forceReload=False):
     fileName = './time_series_normalized.csv'
     file = Path(fileName)
@@ -393,13 +376,6 @@ def normalizeFeatures(allTimeSeries, forceReload=False):
     return allTimeSeries
 
 
-def addNextNHoursUrineOutput(allTimeSeries, n=6):
-    for timeSeries in allTimeSeries:
-        timeSeries['Next {n} hours urine output'.format(n=n)] = \
-            list(timeSeries['{n} hours urine output'.format(n=n)].iloc[n:]) + [0]*n
-        timeSeries['AKI'] = (timeSeries['Next {n} hours urine output'.format(n=n)] < n*0.5).astype(np.int)
-
-
 def dropNRows(allTimeSeries, n=6):
     for timeSeries in allTimeSeries:
         timeSeries.drop(timeSeries.index[-n:], inplace=True)
@@ -410,11 +386,7 @@ if __name__ == "__main__":
     print("Select {n} icu stay patients".format(n=len(stays)))
     allTimeSeries = getAllPatientsTimeSeries(stays)
     print("Extracted time series for all patients.")
-    addNextNHoursUrineOutput(allTimeSeries, 6)
     dropNRows(allTimeSeries, 6)
-    allTimeSeries = addNotNullColumnsForAllPatients(allTimeSeries)
     print("Added not null columns for all patients")
     allTimeSeries = normalizeFeatures(allTimeSeries)
     print("Normalized all features")
-    allTimeSeries = fillNaForAllPatients(allTimeSeries)
-    print("Filled Na for all patients")
