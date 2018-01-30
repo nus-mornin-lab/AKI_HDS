@@ -101,7 +101,7 @@ def getICUStayPatients(engine=engine, force_reload=False):
             WHERE first_wardid=last_wardid
             AND first_careunit=last_careunit
             AND los>=0.5 AND los<=30
-            AND i.outtime-i.intime>=interval '12' hour AND p.dod-i.intime>=interval '12' hour;
+            AND i.outtime-i.intime>=interval '12' hour AND (p.dod IS NULL OR p.dod-i.intime>=interval '12' hour);
             """, con=engine)
         # get patients having all the features we need
         hadmIDs = getPatientsHavingAllFeatures()
