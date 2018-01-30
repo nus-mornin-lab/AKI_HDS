@@ -188,25 +188,6 @@ def addUrineOutput(hadmID, timeSeries, con):
     timeSeries['{n} hours urine output'.format(n=windowSize)] = urineOutputColumn
 
 
-def addDrug(drug, hadmID, timeSeries, con):
-    query = """
-    SELECT charttime, amount FROM {table}
-    WHERE hadm_id={hadmID} AND itemid IN {itemIDs}
-    """
-    cvQuery = mvQuery = None
-    if 'cv' in drug:
-        cvQuery = query.format(table='cv', hadmID=hadmID, itemIDs=drug['cv'])
-    if 'mv' in drug:
-        mvQuery = query.format(table='mv', hadmID=hadmID, itemIDs=drug['mv'])
-    if cvQuery and mvQuery:
-        query = cvQuery + " UNION " + mvQuery
-    else:
-        query = cvQuery if cvQuery else mvQuery
-    query += ";"
-    inputEvents = pd.read_sql(query, con)
-    inputEvents['charttime']
-
-
 def addGCS(hadmID, timeSeries, con):
     query = """
     SELECT c1.charttime AS currenttime,
