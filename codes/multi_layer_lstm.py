@@ -11,7 +11,7 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
     sequenceLengths = tf.placeholder(tf.int32, [None])  # [batchSize]
     y = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
     mask = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
-    keepProb = tf.placeholder(tf.float64, [1])
+    keepProb = tf.placeholder(tf.float64, shape=())
     batchSize = tf.shape(x)[0]
 
     def getCell(stateSize):

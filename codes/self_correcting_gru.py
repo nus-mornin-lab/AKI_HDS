@@ -23,7 +23,7 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
     y_ta = tf.TensorArray(dtype=tf.float64, size=num_steps,  name='y_ta').unstack(y_transpose)
     y_predicted_ta = tf.TensorArray(dtype=tf.float64, size=num_steps, name='y_predicted_ta', clear_after_read=False)
     mask = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
-    keepProb = tf.placeholder(tf.float64, [1])
+    keepProb = tf.placeholder(tf.float64, shape=())
 
     def getCell(stateSize):
         cell = tf.nn.rnn_cell.GRUCell(stateSize, activation=tf.nn.relu)
