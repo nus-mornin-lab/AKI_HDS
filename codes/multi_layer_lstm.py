@@ -67,8 +67,12 @@ def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize):
             current_epoch += 1
             trLosses.append(accuracy / step)
             # eval test set
-            batch = te.next_batch()
-            feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['musk']: batch[3]}
-            accuracy = sess.run([g['accuracy']], feed_dict=feed)[0]
-            print("Accuracy after epoch", current_epoch, "cost: ", totalCost/step, " - tr:", trLosses[-1], "- te:", accuracy)
+            test_epoch = te.epochs
+            testAccuracy = 0
+            while te.epochs <= test_epoch:
+                batch = te.next_batch(batchSize)
+                feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['musk']: batch[3]}
+                size = len(batch[0])
+                testAccuracy += sess.run([g['accuracy']], feed_dict=feed)[0]*size
+            print("Accuracy after epoch", current_epoch, "cost: ", totalCost/step, " - tr:", trLosses[-1], "- te:", testAccuracy/te.size)
             step, accuracy, totalCost = 0, 0, 0
