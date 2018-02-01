@@ -4,19 +4,19 @@ from data_iterator import DataIterator
 numFeatures = 24
 batchSize = 256
 stateSizes = (256, 128, 64, 32)
-keepProb = 0.5
 
 
-def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes, keepProb=keepProb):
+def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
     x = tf.placeholder(tf.float64, [None, None, numFeatures])  # [batchSize, num_steps, numFeatures]
     sequenceLengths = tf.placeholder(tf.int32, [None])  # [batchSize]
     y = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
     musk = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
+    keepProb = tf.placeholder(tf.float64, [1])
     batchSize = tf.shape(x)[0]
 
     def getCell(stateSize):
         cell = tf.nn.rnn_cell.GRUCell(stateSize, activation=tf.nn.relu)
-        cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=keepProb)
+        cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=keepProb, state_keep_prob=keepProb)
         return cell
 
     rnnLayers = [getCell(stateSize) for stateSize in stateSizes]
@@ -43,7 +43,8 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes, keepProb=keepProb
         'trainStep': trainStep,
         'predicts': predicts,
         'accuracy': accuracy,
-        'cost': cost
+        'cost': cost,
+        'keepProb': keepProb
     }
 
 
@@ -58,7 +59,7 @@ def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize):
     while current_epoch < epochs:
         step += 1
         batch = tr.next_batch(batchSize)
-        feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['musk']: batch[3]}
+        feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['musk']: batch[3], g['keepProb']: 0.5}
         accuracy_, cost, _ = sess.run([g['accuracy'], g['cost'], g['trainStep']], feed_dict=feed)
         totalCost += cost
         accuracy += accuracy_
@@ -71,7 +72,7 @@ def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize):
             testAccuracy = 0
             while te.epochs <= test_epoch:
                 batch = te.next_batch(batchSize)
-                feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['musk']: batch[3]}
+                feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['musk']: batch[3], g['keepProb']: 1}
                 size = len(batch[0])
                 testAccuracy += sess.run([g['accuracy']], feed_dict=feed)[0]*size
             print("Accuracy after epoch", current_epoch, "cost: ", totalCost/step, " - tr:", trLosses[-1], "- te:", testAccuracy/te.size)
