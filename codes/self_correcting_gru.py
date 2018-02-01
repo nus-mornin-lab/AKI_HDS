@@ -11,7 +11,9 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
     x = tf.placeholder(tf.float64, [None, None, numFeatures])  # [batchSize, num_steps, numFeatures]
     batchSize = tf.shape(x)[0]
     num_steps = tf.shape(x)[1]
-    x_transpose = tf.transpose(x, [1, 0, 2])  # [num_steps, batchSize, numFeatures]
+    keepProb = tf.placeholder(tf.float64, shape=())
+    x_dropout = tf.nn.dropout(x, keepProb)
+    x_transpose = tf.transpose(x_dropout, [1, 0, 2])  # [num_steps, batchSize, numFeatures]
     x_ta = tf.TensorArray(dtype=tf.float64, size=num_steps, name='x_ta').unstack(x_transpose)
     urineOutput = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
     urineOutput_transpose = tf.transpose(urineOutput, [1, 0])  # [num_steps, batchSize]
@@ -23,7 +25,6 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
     y_ta = tf.TensorArray(dtype=tf.float64, size=num_steps,  name='y_ta').unstack(y_transpose)
     y_predicted_ta = tf.TensorArray(dtype=tf.float64, size=num_steps, name='y_predicted_ta', clear_after_read=False)
     mask = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
-    keepProb = tf.placeholder(tf.float64, shape=())
 
     def getCell(stateSize):
         cell = tf.nn.rnn_cell.GRUCell(stateSize, activation=tf.nn.relu)

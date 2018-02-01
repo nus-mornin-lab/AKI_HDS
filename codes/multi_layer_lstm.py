@@ -8,10 +8,11 @@ stateSizes = (256, 128, 64, 32)
 
 def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
     x = tf.placeholder(tf.float64, [None, None, numFeatures])  # [batchSize, num_steps, numFeatures]
+    keepProb = tf.placeholder(tf.float64, shape=())
+    x_dropout = tf.nn.dropout(x, keepProb)
     sequenceLengths = tf.placeholder(tf.int32, [None])  # [batchSize]
     y = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
     mask = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
-    keepProb = tf.placeholder(tf.float64, shape=())
     batchSize = tf.shape(x)[0]
 
     def getCell(stateSize):
@@ -21,7 +22,7 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
 
     rnnLayers = [getCell(stateSize) for stateSize in stateSizes]
     multiLSTM = tf.nn.rnn_cell.MultiRNNCell(rnnLayers)
-    outputs, states = tf.nn.dynamic_rnn(multiLSTM, x, sequenceLengths, dtype=tf.float64)
+    outputs, states = tf.nn.dynamic_rnn(multiLSTM, x_dropout, sequenceLengths, dtype=tf.float64)
     outputs = tf.reshape(outputs, [-1, stateSizes[-1]])
     with tf.variable_scope('softmax'):
         W = tf.get_variable('W', [stateSizes[-1], 1], initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float64)
