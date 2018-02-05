@@ -272,7 +272,8 @@ def getTimeStamps(patientStay):
 def addNextNHoursUrineOutput(timeSeries, n=6):
     timeSeries['Next {n} hours urine output'.format(n=n)] = \
         list(timeSeries['{n} hours urine output'.format(n=n)].iloc[n:]) + [0]*n
-    timeSeries['AKI'] = (timeSeries['Next {n} hours urine output'.format(n=n)] < n*0.5).astype(np.int)
+    timeSeries['AKI'] = (
+        timeSeries['Next {n} hours urine output'.format(n=n)] / timeSeries['Weight'] / 6 <= 0.5).astype(np.int)
 
 
 def fillNa(timeSeries):
