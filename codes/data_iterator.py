@@ -2,7 +2,7 @@ import numpy as np
 
 
 class DataIterator:
-    def __init__(self, timeSeriesList, ratio=7.4, numBuckets=5):
+    def __init__(self, timeSeriesList, ratio=8.9, numBuckets=5):
         self.size = len(timeSeriesList)
         self.numBuckets = numBuckets
         self.epochs = 0
