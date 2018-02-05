@@ -303,6 +303,7 @@ def getPatientTimeSeries(patientStay):
     addProcedure({'view': 'vasopressordurations', 'label': 'vasoactive medications'}, icustayID, timeSeries, con)
     addProcedure({'view': 'sedativedurations', 'label': 'sedative medications'}, icustayID, timeSeries, con)
     fillNa(timeSeries)
+    timeSeries.drop(timeSeries.index[-6:], inplace=True)
     return timeSeries
 
 
@@ -376,17 +377,10 @@ def normalizeFeatures(allTimeSeries, forceReload=False):
     return allTimeSeries
 
 
-def dropNRows(allTimeSeries, n=6):
-    for timeSeries in allTimeSeries:
-        timeSeries.drop(timeSeries.index[-n:], inplace=True)
-
-
 if __name__ == "__main__":
     stays = getICUStayPatients()
     print("Select {n} icu stay patients".format(n=len(stays)))
     allTimeSeries = getAllPatientsTimeSeries(stays)
     print("Extracted time series for all patients.")
-    dropNRows(allTimeSeries, 6)
-    print("Added not null columns for all patients")
     allTimeSeries = normalizeFeatures(allTimeSeries)
     print("Normalized all features")
