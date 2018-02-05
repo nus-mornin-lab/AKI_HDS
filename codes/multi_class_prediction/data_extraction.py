@@ -89,7 +89,7 @@ def getPatientsHavingAllFeatures():
 
 
 def getICUStayPatients(engine=engine, force_reload=False):
-    icustays_filepath = './selected_stays.csv'
+    icustays_filepath = './multi_class_selected_stays.csv'
     icustays_file = Path(icustays_filepath)
     if not force_reload and icustays_file.is_file():
         icustays = pd.read_csv(icustays_filepath)
@@ -321,7 +321,7 @@ def getPatientTimeSeries(patientStay):
 
 
 def getAllPatientsTimeSeries(stays, forceReload=False):
-    timeSeriesFilename = './time_series.csv'
+    timeSeriesFilename = './multi_class_time_series.csv'
     timeSeriesFile = Path(timeSeriesFilename)
     if not forceReload and timeSeriesFile.is_file():
         allTimeSeriesConcat = pd.read_csv(timeSeriesFile)
@@ -349,7 +349,7 @@ def addNotNullColumns(timeSeries):
 
 
 def addNotNullColumnsForAllPatients(allTimeSeries, forceReload=False):
-    fileName = './time_series_with_not_null.csv'
+    fileName = './multi_class_time_series_with_not_null.csv'
     file = Path(fileName)
     if not forceReload and file.is_file():
         allTimeSeriesConcat = pd.read_csv(file)
@@ -371,7 +371,7 @@ def addNotNullColumnsForAllPatients(allTimeSeries, forceReload=False):
 
 
 def normalizeFeatures(allTimeSeries, forceReload=False):
-    fileName = './time_series_normalized.csv'
+    fileName = './multi_class_time_series_normalized.csv'
     file = Path(fileName)
     if not forceReload and file.is_file():
         allTimeSeriesConcat = pd.read_csv(file)
