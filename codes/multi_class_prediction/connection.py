@@ -7,28 +7,36 @@ port = input("DB port number: ")
 
 
 def getEngine():
-	try:
-		engine = create_engine('postgresql://{user}:@{address}:{port}/mimic'.format(
-			user=user,
-			address=address,
-			port=port
-		))
-		connection = engine.connect()
-		# sorry for this, we need to set schema this way
-		pd.read_sql_query("""
+    try:
+        engine = create_engine('postgresql://{user}:@{address}:{port}/mimic'.format(
+            user=user,
+            address=address,
+            port=port
+        ))
+        connection = engine.connect()
+        # sorry for this, we need to set schema this way
+        pd.read_sql_query("""
 		    set search_path to mimiciii;
 		    SELECT COUNT(*) FROM patients;
 		    """, con=connection)
-		return connection
-	except:
-		print("Unable to connect to the database")
-		return None
+    except:
+        print("Unable to connect to the database")
+        return None
+    # for unknown bug on server
+    while True:
+        try:
+            pd.read_sql_query("SELECT starttime, endtime FROM vasopressordurations  WHERE icustay_id=238023;",
+                              connection)
+            return connection
+        except:
+            pass
+
 
 def getConnection():
-	try:
-		engine = getEngine()
-		connection = engine.connect()
-		return connection
-	except:
-		print("Unable to connect to the database")
-		return None
+    try:
+        engine = getEngine()
+        connection = engine.connect()
+        return connection
+    except:
+        print("Unable to connect to the database")
+        return None
