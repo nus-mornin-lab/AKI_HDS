@@ -1,7 +1,7 @@
 import tensorflow as tf
 from data_iterator import DataIterator
 
-numFeatures = 24
+numFeatures = 25
 batchSize = 256
 stateSizes = (256, 128, 64, 32)
 
@@ -38,7 +38,7 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
     learningRate = tf.placeholder(tf.float64, shape=())
     momentum = tf.placeholder(tf.float64, shape=())
     trainStepAdam = tf.train.AdamOptimizer(learningRate).minimize(cost)
-    trainStepMomentum = tf.train.MomentumOptimizer(learningRate, momentum)
+    trainStepMomentum = tf.train.MomentumOptimizer(learningRate, momentum).minimize(cost)
     return {
         'x': x,
         'y': y,
@@ -82,7 +82,8 @@ def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize, learningRat
             testAccuracy = 0
             while te.epochs <= test_epoch:
                 batch = te.next_batch(batchSize)
-                feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['mask']: batch[3], g['keepProb']: 1}
+                feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['mask']: batch[3],
+                        g['keepProb']: 1}
                 size = len(batch[0])
                 testAccuracy += sess.run([g['accuracy']], feed_dict=feed)[0]*size
             print("Accuracy after epoch", current_epoch, "cost: ", totalCost/step, " - tr:", trLosses[-1], "- te:", testAccuracy/te.size)
