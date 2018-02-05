@@ -69,7 +69,7 @@ def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize, learningRat
         feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['mask']: batch[3], g['keepProb']: 0.9,
                 g['learningRate']: learningRate}
         if optimizer == 'momentum':
-            feed['momentumValue'] = momentum
+            feed[g['momentumValue']] = momentum
         accuracy_, cost, _ = sess.run([g['accuracy'], g['cost'], g[optimizer]], feed_dict=feed)
         totalCost += cost
         accuracy += accuracy_
