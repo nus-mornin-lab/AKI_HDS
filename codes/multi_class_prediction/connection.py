@@ -22,14 +22,6 @@ def getEngine():
     except:
         print("Unable to connect to the database")
         return None
-    # for unknown bug on server
-    while True:
-        try:
-            pd.read_sql_query("SELECT starttime, endtime FROM vasopressordurations  WHERE icustay_id=238023;",
-                              connection)
-            return connection
-        except:
-            pass
 
 
 def getConnection():
