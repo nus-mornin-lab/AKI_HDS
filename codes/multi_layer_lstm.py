@@ -17,7 +17,7 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
 
     def getCell(stateSize):
         cell = tf.nn.rnn_cell.GRUCell(stateSize, activation=tf.nn.relu)
-        cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=keepProb, state_keep_prob=keepProb)
+        cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=keepProb)
         return cell
 
     rnnLayers = [getCell(stateSize) for stateSize in stateSizes]
@@ -35,21 +35,27 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
     costs *= mask
     cost = tf.reduce_mean(tf.reduce_sum(costs, reduction_indices=[1]))
     accuracy = tf.reduce_sum(tf.cast(tf.abs(predicts - y) < 0.5, tf.float64) * mask) / tf.reduce_sum(mask)
-    trainStep = tf.train.AdamOptimizer(1e-4).minimize(cost)
+    learningRate = tf.placeholder(tf.float64, shape=())
+    momentum = tf.placeholder(tf.float64, shape=())
+    trainStepAdam = tf.train.AdamOptimizer(learningRate).minimize(cost)
+    trainStepMomentum = tf.train.MomentumOptimizer(learningRate, momentum)
     return {
         'x': x,
         'y': y,
         'seqlen': sequenceLengths,
         'mask': mask,
-        'trainStep': trainStep,
+        'adam': trainStepAdam,
+        'momentum': trainStepMomentum,
+        'momentumValue': momentum,
         'predicts': predicts,
         'accuracy': accuracy,
         'cost': cost,
-        'keepProb': keepProb
+        'keepProb': keepProb,
+        'learningRate': learningRate
     }
 
 
-def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize):
+def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize, learningRate=1e-4, momentum=0.9, optimizer='adam'):
     tr = DataIterator(train)
     te = DataIterator(test)
 
@@ -60,8 +66,11 @@ def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize):
     while current_epoch < epochs:
         step += 1
         batch = tr.next_batch(batchSize)
-        feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['mask']: batch[3], g['keepProb']: 0.5}
-        accuracy_, cost, _ = sess.run([g['accuracy'], g['cost'], g['trainStep']], feed_dict=feed)
+        feed = {g['x']: batch[0], g['y']: batch[1], g['seqlen']: batch[2], g['mask']: batch[3], g['keepProb']: 0.9,
+                g['learningRate']: learningRate}
+        if optimizer == 'momentum':
+            feed['momentumValue'] = momentum
+        accuracy_, cost, _ = sess.run([g['accuracy'], g['cost'], g[optimizer]], feed_dict=feed)
         totalCost += cost
         accuracy += accuracy_
 
