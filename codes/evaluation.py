@@ -1,7 +1,8 @@
 import tensorflow as tf
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.model_selection import train_test_split
-import  numpy as np
+import matplotlib.pyplot as plt
+import numpy as np
 import sys
 from data_extraction import normalizeFeatures
 from data_iterator import DataIterator
@@ -40,7 +41,8 @@ with tf.Session() as sess:
     y = batch[1]
     seqlen = batch[2]
     if modelType == 'correcting':
-        feed = {graph['x']: batch[0][:, :, :-1], graph['urineOutput']: batch[0][:, :, -1], graph['y']: batch[1],
+        feed = {graph['x']: batch[0][:, :, :-1], graph['urineOutput']: batch[0][:, :, -1],
+                graph['weight']: batch[0][:, :, 15], graph['y']: batch[1],
                 graph['seqlen']: batch[2], graph['mask']: batch[3], graph['keepProb']: 1}
     else:
         feed = {graph['x']: batch[0], graph['y']: batch[1], graph['seqlen']: batch[2], graph['mask']: batch[3], graph['keepProb']: 1}
@@ -52,7 +54,21 @@ with tf.Session() as sess:
         y_with_seqlen.append(y[i, :seqlen[i]])
     predicts = np.hstack(predicts_with_seqlen)
     y = np.hstack(y_with_seqlen)
-    print("AUC is ", roc_auc_score(y, predicts))
+    auc = roc_auc_score(y, predicts)
+    print("AUC is ", auc)
+    fpr, tpr, thresholds = roc_curve(y, predicts, pos_label=1)
     predicts = (predicts >= 0.5)
     isCorrect = (predicts == y)
     print("Accuracy: ", isCorrect.sum()/len(isCorrect))
+    plt.figure()
+    lw = 2
+    plt.plot(fpr, tpr, color='darkorange',
+             lw=lw, label='ROC curve (area = %0.2f)' % auc)
+    plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver operating characteristic example')
+    plt.legend(loc="lower right")
+    plt.show()
