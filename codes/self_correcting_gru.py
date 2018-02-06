@@ -15,6 +15,8 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
     x_dropout = tf.nn.dropout(x, keepProb)
     x_transpose = tf.transpose(x_dropout, [1, 0, 2])  # [num_steps, batchSize, numFeatures]
     x_ta = tf.TensorArray(dtype=tf.float64, size=num_steps, name='x_ta').unstack(x_transpose)
+    weight = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
+    weight_ta = tf.TensorArray(dtype=tf.float64, size=num_steps, name='weight_ta').unstack(tf.transpose(weight, [1, 0]))
     urineOutput = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
     urineOutput_transpose = tf.transpose(urineOutput, [1, 0])  # [num_steps, batchSize]
     urineOutput_ta = tf.TensorArray(dtype=tf.float64, size=num_steps, name='urineOutput_ta').unstack(
@@ -37,7 +39,7 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
     W = tf.get_variable('W', [stateSizes[-1], 1], initializer=tf.contrib.layers.xavier_initializer(),
                         dtype=tf.float64)
     b = tf.get_variable('b', [1], initializer=tf.constant_initializer(0.0), dtype=tf.float64)
-    feedback_W1 = tf.get_variable('feedback_W1', [3, 16], initializer=tf.contrib.layers.xavier_initializer(),
+    feedback_W1 = tf.get_variable('feedback_W1', [4, 16], initializer=tf.contrib.layers.xavier_initializer(),
                         dtype=tf.float64)
     feedback_b1 = tf.get_variable('feedback_b1', [16], initializer=tf.constant_initializer(0.0), dtype=tf.float64)
     feedback_W2 = tf.get_variable('feedback_W2', [16, 16], initializer=tf.contrib.layers.xavier_initializer(),
@@ -82,7 +84,9 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
             y_predicted_feedback = tf.expand_dims(y_predicted_feedback, -1)
             y_feedback = tf.expand_dims(y_feedback, -1)
             urineOutput_feedback = tf.expand_dims(urineOutput_feedback, -1)
-            feedback = tf.concat([y_predicted_feedback, y_feedback, urineOutput_feedback], axis=1)  # [batchSize, 3]
+            weight_feedback = weight_ta.read(time)
+            weight_feedback = tf.expand_dims(weight_feedback, -1)
+            feedback = tf.concat([y_predicted_feedback, y_feedback, urineOutput_feedback, weight_feedback], axis=1)  # [batchSize, 4]
             feedback = tf.matmul(feedback, feedback_W1) + feedback_b1
             feedback = tf.nn.relu(feedback)
             feedback = tf.matmul(feedback, feedback_W2) + feedback_b2  # [batchSize, 16]
@@ -138,6 +142,7 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
     return {
         'x': x,
         'urineOutput': urineOutput,
+        'weight': weight,
         'y': y,
         'seqlen': sequenceLengths,
         'mask': mask,
@@ -167,7 +172,8 @@ def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize, learningRat
     while current_epoch < epochs:
         step += 1
         batch = tr.next_batch(batchSize)
-        feed = {g['x']: batch[0][:, :, :-1], g['urineOutput']: batch[0][:, :, -1], g['y']: batch[1],
+        feed = {g['x']: batch[0][:, :, :-1], g['urineOutput']: batch[0][:, :, -1], g['weight']: batch[0][:, :, 15],
+                g['y']: batch[1],
                 g['seqlen']: batch[2], g['mask']: batch[3], g['keepProb']: 0.5, g['learningRate']: learningRate}
         if optimizer == 'momentum':
             feed[g['momentumValue']] = momentum
@@ -183,7 +189,8 @@ def trainGraph(g, sess, train, test, epochs=10, batchSize=batchSize, learningRat
             testAccuracy = 0
             while te.epochs <= test_epoch:
                 batch = te.next_batch(batchSize)
-                feed = {g['x']: batch[0][:, :, :-1], g['urineOutput']: batch[0][:, :, -1], g['y']: batch[1],
+                feed = {g['x']: batch[0][:, :, :-1], g['urineOutput']: batch[0][:, :, -1],
+                        g['weight']: batch[0][:, :, 15], g['y']: batch[1],
                         g['seqlen']: batch[2], g['mask']: batch[3], g['keepProb']: 1}
                 size = len(batch[0])
                 testAccuracy += sess.run([g['accuracy']], feed_dict=feed)[0]*size
