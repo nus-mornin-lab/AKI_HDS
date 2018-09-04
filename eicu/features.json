@@ -1,0 +1,116 @@
+[
+  {
+    "label": "Heart Rate",
+    "pivoted_vital": "heartrate",
+    "chartevents": [211, 220045],
+    "max": 178,
+    "min": 52
+  },
+  {
+    "label": "Respiratory Rate",
+    "pivoted_vital": "respiratoryrate",
+    "chartevents": [618, 220210],
+    "max": 37,
+    "min": 8
+  },
+  {
+    "label": "SpO2/SaO2",
+    "pivoted_vital": "spo2",
+    "chartevents": [646, 834, 220277],
+    "max": 100,
+    "min": 87
+  },
+  {
+    "label": "pH",
+    "pivoted_bg": "ph",
+    "chartevents": [780, 1126, 3839, 4753],
+    "labevents": [50820],
+    "max": 7.54,
+    "min": 7.11
+  },
+  {
+    "label": "Potassium",
+    "pivoted_lab": "potassium",
+    "chartevents": [829, 1535, 3792, 227442, 227464, 4194, 3725],
+    "labevents": [50971, 50822],
+    "max": 6.4,
+    "min": 2.9
+  },
+  {
+    "label": "Calcium",
+    "pivoted_lab": "calcium",
+    "chartevents": [786, 225625, 1522, 3746],
+    "labevents": [50893],
+    "max": 10.8,
+    "min": 6.4
+  },
+  {
+    "label": "Glucose",
+    "pivoted_lab": "glucose",
+    "chartevents": [225664, 807, 811, 1529, 220621, 226537, 3744],
+    "labevents": [50809, 50931],
+    "max": 358.0,
+    "min": 58.0
+  },
+  {
+    "label": "Sodium",
+    "pivoted_lab": "sodium",
+    "chartevents": [837, 220645, 3803, 226534, 1536, 4195, 3726],
+    "labevents": [50983, 50824],
+    "max": 153.0,
+    "min": 125.0
+  },
+  {
+    "label": "HCO3",
+    "pivoted_lab": "bicarbonate",
+    "chartevents": [227443],
+    "labevents": [50882, 50803],
+    "max": 40.0,
+    "min": 12.0
+  },
+  {
+    "label": "White Blood Cells",
+    "pivoted_lab": "wbc",
+    "chartevents": [1127, 1542, 220546, 4200, 3834],
+    "labevents": [51300, 51301],
+    "max": 37.9,
+    "min": 0.7
+  },
+  {
+    "label": "Hemoglobin",
+    "pivoted_lab": "hemoglobin",
+    "labevents": [50811, 51222],
+    "max": 16.2,
+    "min": 6.8
+  },
+  {
+    "label": "Platelet Count",
+    "pivoted_lab": "platelets",
+    "chartevents": [828, 227457, 3789],
+    "lavevents": [51265],
+    "max": 706.0,
+    "min": 21.0
+  },
+  {
+    "label": "Urea Nitrogen",
+    "pivoted_lab": "bun",
+    "labevents": [51006],
+    "max": 113.0,
+    "min": 4.0
+  },
+  {
+    "label": "Creatinine",
+    "pivoted_lab": "creatinine",
+    "chartevents": [791, 1525, 220615, 3750],
+    "labevents": [50912, 51081],
+    "max": 8.7,
+    "min": 0.3
+  },
+  {
+    "label": "Blood Pressure",
+    "pivoted_vital": "nibp_mean",
+    "chartevents": [220181, 220052, 225312, 224322, 6702, 443, 52, 456],
+    "max": 126.0,
+    "min": 47.0
+  }
+]
