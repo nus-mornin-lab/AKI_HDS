@@ -1,18 +1,18 @@
 import tensorflow as tf
 from data_iterator import DataIterator
 
-numFeatures = 25
-batchSize = 256
+numFeatures = 24
+batchSize = 32
 stateSizes = (256, 128, 64, 32)
 
 
 def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
-    x = tf.placeholder(tf.float64, [None, None, numFeatures])  # [batchSize, num_steps, numFeatures]
-    keepProb = tf.placeholder(tf.float64, shape=())
+    x = tf.placeholder(tf.float32, [None, None, numFeatures])  # [batchSize, num_steps, numFeatures]
+    keepProb = tf.placeholder(tf.float32, shape=())
     x_dropout = tf.nn.dropout(x, keepProb)
     sequenceLengths = tf.placeholder(tf.int32, [None])  # [batchSize]
-    y = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
-    mask = tf.placeholder(tf.float64, [None, None])  # [batchSize, num_steps]
+    y = tf.placeholder(tf.float32, [None, None])  # [batchSize, num_steps]
+    mask = tf.placeholder(tf.float32, [None, None])  # [batchSize, num_steps]
     batchSize = tf.shape(x)[0]
 
     def getCell(stateSize):
@@ -22,21 +22,21 @@ def buildGraph(numFeatures=numFeatures, stateSizes=stateSizes):
 
     rnnLayers = [getCell(stateSize) for stateSize in stateSizes]
     multiLSTM = tf.nn.rnn_cell.MultiRNNCell(rnnLayers)
-    outputs, states = tf.nn.dynamic_rnn(multiLSTM, x_dropout, sequenceLengths, dtype=tf.float64)
+    outputs, states = tf.nn.dynamic_rnn(multiLSTM, x_dropout, sequenceLengths, dtype=tf.float32)
     outputs = tf.reshape(outputs, [-1, stateSizes[-1]])
     with tf.variable_scope('softmax'):
-        W = tf.get_variable('W', [stateSizes[-1], 1], initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float64)
-        b = tf.get_variable('b', [1], initializer=tf.constant_initializer(0.0), dtype=tf.float64)
+        W = tf.get_variable('W', [stateSizes[-1], 1], initializer=tf.contrib.layers.xavier_initializer(), dtype=tf.float32)
+        b = tf.get_variable('b', [1], initializer=tf.constant_initializer(0.0), dtype=tf.float32)
     logits = tf.matmul(outputs, W) + b  # [batchSize, num_steps]
     predicts = tf.nn.sigmoid(logits)
     predicts = tf.reshape(predicts, [batchSize, -1])
-    costs = -y * tf.log(tf.clip_by_value(predicts, 1e-10, 1.0)) - (1 - y) * tf.log(
-        tf.clip_by_value(1 - predicts, 1e-10, 1.0))
+    costs = -y * tf.log(tf.clip_by_value(predicts, 1e-10, 1.0-1e-10)) - (1 - y) * tf.log(
+        tf.clip_by_value(1 - predicts, 1e-10, 1.0-1e-10))
     costs *= mask
     cost = tf.reduce_mean(tf.reduce_sum(costs, reduction_indices=[1]))
-    accuracy = tf.reduce_sum(tf.cast(tf.abs(predicts - y) < 0.5, tf.float64) * mask) / tf.reduce_sum(mask)
-    learningRate = tf.placeholder(tf.float64, shape=())
-    momentum = tf.placeholder(tf.float64, shape=())
+    accuracy = tf.reduce_sum(tf.cast(tf.abs(predicts - y) < 0.5, tf.float32) * mask) / tf.reduce_sum(mask)
+    learningRate = tf.placeholder(tf.float32, shape=())
+    momentum = tf.placeholder(tf.float32, shape=())
     trainStepAdam = tf.train.AdamOptimizer(learningRate).minimize(cost)
     trainStepMomentum = tf.train.MomentumOptimizer(learningRate, momentum).minimize(cost)
     return {

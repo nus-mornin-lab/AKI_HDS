@@ -54,7 +54,7 @@ allFeatures = ['age', 'gender', 'Heart Rate',
                    'Calcium', 'Glucose', 'Sodium', 'HCO3', 'White Blood Cells',
                    'Hemoglobin', 'Red Blood Cells', 'Platelet Count', 
                    'Urea Nitrogen', 'Creatinine', 'Weight', 'gcs', 'ventilation',
-                   'vasoactive medications', 'Blood Pressure', 'sedative medications', '1 hours urine output']
+                   'vasoactive medications', 'Blood Pressure', 'sedative medications', '1 hours urine output', '6 hours urine output']
 engine = getEngine()
 
 
@@ -273,7 +273,7 @@ def addNextNHoursUrineOutput(timeSeries, n=6):
     timeSeries['Next {n} hours urine output'.format(n=n)] = \
         list(timeSeries['{n} hours urine output'.format(n=n)].iloc[n:]) + [0]*n
     timeSeries['AKI'] = (
-        timeSeries['Next {n} hours urine output'.format(n=n)] / timeSeries['Weight'] / 6 <= 0.5).astype(np.int)
+        timeSeries['Next {n} hours urine output'.format(n=n)] / timeSeries['Weight'] / 6.0 <= 0.5).astype(np.int)
 
 
 def fillNa(timeSeries):
@@ -298,12 +298,12 @@ def getPatientTimeSeries(patientStay):
         addFeature(feature, hadmID, timeSeries, con)
     addUrineOutput(hadmID, timeSeries, con, windowSize=1, offset=0)
     addUrineOutput(hadmID, timeSeries, con)
-    addNextNHoursUrineOutput(timeSeries, 6)
     addGCS(hadmID, timeSeries, con)
     addProcedure({'view': 'ventdurations', 'label': 'ventilation'}, icustayID, timeSeries, con)
     addProcedure({'view': 'vasopressordurations', 'label': 'vasoactive medications'}, icustayID, timeSeries, con)
     addProcedure({'view': 'sedativedurations', 'label': 'sedative medications'}, icustayID, timeSeries, con)
     fillNa(timeSeries)
+    addNextNHoursUrineOutput(timeSeries, 6)
     timeSeries.drop(timeSeries.index[-6:], inplace=True)
     return timeSeries
 
@@ -315,16 +315,24 @@ def getAllPatientsTimeSeries(stays, forceReload=False):
         allTimeSeriesConcat = pd.read_csv(timeSeriesFile)
         allTimeSeries = [timeSeries.sort_values('Time') for icustayID, timeSeries in
                          allTimeSeriesConcat.groupby('icustay_id')]
+        for timeSeries in allTimeSeries:
+            timeSeries.reset_index(drop=True, inplace=True)
+            weight = timeSeries['Weight'][0]
+            timeSeries['AKI'] = (
+                    timeSeries['Next 6 hours urine output'] / weight / 6.0 <= 0.5).astype(
+                np.int)
+        allTimeSeriesConcat = pd.concat(allTimeSeries)
+        allTimeSeriesConcat.to_csv(timeSeriesFilename, index=False)
         return allTimeSeries
     allTimeSeries = []
-    for i in range(0, len(stays), 100):
+    for i in range(0, len(stays), 25):
         pool = ProcessPoolExecutor()
-        batchTimeSeries = [pool.submit(getPatientTimeSeries, stays.iloc[j]) for j in range(i, min(i+100, len(stays)))]
+        batchTimeSeries = [pool.submit(getPatientTimeSeries, stays.iloc[j]) for j in range(i, min(i+25, len(stays)))]
         wait(batchTimeSeries)
         batchTimeSeries = [timeSeries.result() for timeSeries in batchTimeSeries]
         allTimeSeries += batchTimeSeries
-        if (i+100) % 1000 == 0:
-            print("Extracted time series for first {n} patients".format(n=min(i+100, len(stays))))
+        if (i+25) % 100 == 0:
+            print("Extracted time series for first {n} patients".format(n=min(i+25, len(stays))))
     allTimeSeriesConcat = pd.concat(allTimeSeries)
     allTimeSeriesConcat.to_csv(timeSeriesFilename, index=False)
     return allTimeSeries
@@ -366,6 +374,9 @@ def normalizeFeatures(allTimeSeries, forceReload=False):
         allTimeSeries = [timeSeries.sort_values('Time') for icustayID, timeSeries in
                          allTimeSeriesConcat.groupby('icustay_id')]
         return allTimeSeries
+    for timeSeries in allTimeSeries:
+        timeSeries['Weight original value'] = timeSeries['Weight'][0]
+        timeSeries['Next 6 hours urine output original value'] = timeSeries['Next 6 hours urine output']
     allTimeSeriesConcat = pd.concat(allTimeSeries)
     for feature in allFeatures:
         minValue = allTimeSeriesConcat[feature].min()
