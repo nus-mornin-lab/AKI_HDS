@@ -1,10 +1,12 @@
 from sqlalchemy import create_engine
 import pandas as pd
 
-user = input("DB user name: ")
-address = input("DB address: ")
-port = input("DB port number: ")
-
+# user = input("DB user name: ")
+# address = input("DB address: ")
+# port = input("DB port number: ")
+user = None
+address = None
+port = None
 
 def getEngine():
     try:
