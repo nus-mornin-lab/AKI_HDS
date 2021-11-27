@@ -1,1 +1,1 @@
-# AKI_2018
+# Self-correcting Recurrent Neural Network for Acute Kidney Injury Prediction in Critical Care
